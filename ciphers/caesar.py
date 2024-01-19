@@ -1,7 +1,3 @@
-# TODO:
-#   ceaser encode
-#   caesar decode
-
 def encode(plain_text, shift):
     # Convert to lowercase and remove leading/trailing whitespaces
     plain_text = plain_text.lower().strip()
