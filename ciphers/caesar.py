@@ -1,5 +1,3 @@
-from tabulate import tabulate
-
 from analysis import utility as util
 
 
@@ -40,15 +38,4 @@ def decode(cipher_text, key):
 
 
 def cryptanalyse(text):
-    english_ic = 0.0686
-    data = []
-    for i in range(26):
-        decoded_text = decode(text, i)
-        ic_value = util.compute_ic(decoded_text)
-        data.append((i, ic_value))  # Store the shift and its IC value as a tuple
-
-    # Sort by IC values and print table
-    sorted_matrix = sorted(data, key=lambda row: abs(row[1] - english_ic))
-    headers = ["Shift Amount", "IC Value"]
-    table = tabulate(sorted_matrix, headers, tablefmt="grid")
-    print(table)
+    pass
