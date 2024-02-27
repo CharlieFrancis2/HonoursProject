@@ -1,4 +1,5 @@
 from analysis import utility as util
+import pandas as pd
 
 
 def encode(plain_text, key):
@@ -14,7 +15,7 @@ def encode(plain_text, key):
             cipher_text += new_char
         # Skip over spaces and non-alphabetic characters
         else:
-            continue
+            cipher_text += char
 
     return cipher_text
 
@@ -37,5 +38,26 @@ def decode(cipher_text, key):
     return plaintext
 
 
-def cryptanalyse(text):
-    pass
+def chi_cryptanalysis(text, exp_letter, exp_bi, exp_tri):
+    results = []
+
+    for key in range(26):
+        decoded_text = decode(text, key)
+        letter_freqs, bigram_freqs, trigram_freqs = util.generate_frequency_data(decoded_text)
+
+        chi_letter = util.compute_chi_squared(letter_freqs, exp_letter, len(decoded_text))
+        chi_bi = util.compute_chi_squared(bigram_freqs, exp_bi, len(decoded_text))
+        chi_tri = util.compute_chi_squared(trigram_freqs, exp_tri, len(decoded_text))
+
+        # Append results, including decoded text for later reference
+        results.append((key, chi_letter, chi_bi, chi_tri, decoded_text))
+
+    # Sort the results by the Chi-Squared Letters score primarily
+    results.sort(key=lambda x: x[1])
+
+    # Print top 5 guesses along with their decoded texts
+    print("Top 5 guesses based on Chi-Squared Letters Score:")
+    for i in range(min(5, len(results))):  # Ensure not to exceed the number of results
+        key, chi_letter, chi_bi, chi_tri, decoded_text = results[i]
+        print(f"\nKey: {key}, Chi-Squared Letter: {chi_letter}, Chi-Squared Bigrams: {chi_bi}, Chi-Squared Trigrams: {chi_tri}")
+        print(f"Decoded Text Preview: {decoded_text[:100]}...")  # Preview of the decoded text

@@ -213,3 +213,4 @@ def compute_chi_squared(observed, expected, text_length):
     # Normalize by text length
     normalized_chi_squared = chi_squared / text_length
     return normalized_chi_squared
+
