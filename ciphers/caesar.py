@@ -1,5 +1,5 @@
 from analysis import utility as util
-import pandas as pd
+import tkinter as tk
 
 
 def encode(plain_text, key):
@@ -38,7 +38,7 @@ def decode(cipher_text, key):
     return plaintext
 
 
-def chi_cryptanalysis(text, exp_letter, exp_bi, exp_tri):
+def chi_cryptanalysis(text, exp_letter, exp_bi, exp_tri, output_text):
     results = []
 
     for key in range(26):
@@ -55,9 +55,13 @@ def chi_cryptanalysis(text, exp_letter, exp_bi, exp_tri):
     # Sort the results by the Chi-Squared Letters score primarily
     results.sort(key=lambda x: x[1])
 
-    # Print top 5 guesses along with their decoded texts
-    print("Top 5 guesses based on Chi-Squared Letters Score:")
-    for i in range(min(5, len(results))):  # Ensure not to exceed the number of results
+    # Initialize output string for Tkinter Text widget
+    output_str = "Top 3 guesses based on Chi-Squared Letters Score:\n"
+    for i in range(min(3, len(results))):  # Ensure not to exceed the number of results
         key, chi_letter, chi_bi, chi_tri, decoded_text = results[i]
-        print(f"\nKey: {key}, Chi-Squared Letter: {chi_letter}, Chi-Squared Bigrams: {chi_bi}, Chi-Squared Trigrams: {chi_tri}")
-        print(f"Decoded Text Preview: {decoded_text[:100]}...")  # Preview of the decoded text
+        output_str += f"\nKey: {key}\n"
+        output_str += f"Decoded Text Preview: {decoded_text[:100]}...\n"  # Preview of the decoded text
+
+    # Clear previous output and display new results
+    output_text.delete("1.0", tk.END)  # Clear existing text
+    output_text.insert(tk.END, output_str)  # Insert new output string

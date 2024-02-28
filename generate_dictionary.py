@@ -1,51 +1,34 @@
-import itertools
+import random
 import string
-import os
-import time
-import argparse
 
 
-def generate_dictionary(n, output_file):
-    # Calculate total number of combinations
-    total_combinations = 26 ** n
+def generate_random_words(num_words, word_length=10):
+    """
+    Generate a specified number of random words, each of a given length.
 
-    # Start a timer
-    start_time = time.time()
+    :param num_words: The number of random words to generate.
+    :param word_length: The length of each word. Default is 10.
+    :return: A list of random words.
+    """
+    words = set()  # Use a set to avoid duplicates
 
-    # Process a small sample to estimate time
-    sample_size = min(1000, total_combinations)  # Use 1000 combinations or total if fewer
-    for _ in itertools.product(string.ascii_lowercase, repeat=min(3, n)):
-        pass  # Simulate processing without writing to file for the sample
-    sample_time = time.time() - start_time
+    while len(words) < num_words:
+        # Generate a random word
+        word = ''.join(random.choice(string.ascii_lowercase) for _ in range(word_length))
+        words.add(word)
 
-    # Extrapolate estimated total time
-    estimated_total_time = sample_time / sample_size * total_combinations
-    print(f"Estimated time to complete: {estimated_total_time:.2f} seconds")
-
-    # Ensure the output directory exists
-    output_dir = os.path.dirname(output_file)
-    if output_dir:  # If there's a specific directory path in output_file
-        os.makedirs(output_dir, exist_ok=True)
-
-    # Process all combinations, writing to file
-    with open(output_file, 'w') as file:
-        for word_tuple in itertools.product(string.ascii_lowercase, repeat=n):
-            word = ''.join(word_tuple)
-            file.write(f"{word}\n")
-
-    actual_time_taken = time.time() - start_time
-    print(f"Actual time taken: {actual_time_taken:.2f} seconds")
+    return list(words)
 
 
-if __name__ == "__main__":
-    # Set up argument parsing
-    parser = argparse.ArgumentParser(
-        description='Generate a dictionary file with all possible words of a given length.')
-    parser.add_argument('n', type=int, help='Length of the words to generate.')
-    parser.add_argument('output_file', type=str, help='Path to the output file where the words will be stored.')
+# Number of words to generate
+num_words = 59049
 
-    # Parse arguments
-    args = parser.parse_args()
+# Generate the words
+random_words = generate_random_words(num_words)
 
-    # Call the function with the provided arguments
-    generate_dictionary(args.n, args.output_file)
+# Optionally, save the words to a file
+with open("random_words.txt", "w") as file:
+    for word in random_words:
+        file.write(word + "\n")
+
+print(f"Generated {len(random_words)} random words.")
