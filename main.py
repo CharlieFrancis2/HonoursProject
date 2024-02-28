@@ -23,10 +23,10 @@ def measure_decryption_time(cipher_text, keys):
 
 
 # Load a sample of keys from 'random_words.txt'
-sample_keys = u.read_from_file('random_words.txt').splitlines()[:100]  # Use a smaller sample for efficiency
+sample_keys = u.read_from_file('texts/random_words.txt').splitlines()[:100]  # Use a smaller sample for efficiency
 
 # Assume 'cipher_text' contains the encrypted text of "The Hobbit"
-cipher_text = u.read_from_file('plain_texts/hobbit.txt')
+cipher_text = u.read_from_file('texts/hobbit.txt')
 
 # Measure the average decryption time
 average_decryption_time = measure_decryption_time(cipher_text, sample_keys)

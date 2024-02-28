@@ -27,7 +27,7 @@ num_words = 59049
 random_words = generate_random_words(num_words)
 
 # Optionally, save the words to a file
-with open("random_words.txt", "w") as file:
+with open("texts/random_words.txt", "w") as file:
     for word in random_words:
         file.write(word + "\n")
 
