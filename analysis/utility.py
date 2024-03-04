@@ -166,31 +166,43 @@ def most_common_character(text):
 
 
 def generate_frequency_data(text):
-    text = prepare_text(text)  # Normalize text
+    """
+    Generate frequency data for letters, bigrams, and trigrams in a given text.
 
-    # Initialize counters
+    Parameters:
+    - text (str): The input text to analyze.
+
+    Returns:
+    - tuple of three dicts:
+        - letter_frequencies (dict): Frequencies of each letter in the text as percentages.
+        - bigram_frequencies (dict): Frequencies of each bigram (pair of letters) in the text as percentages.
+        - trigram_frequencies (dict): Frequencies of each trigram (three consecutive letters) in the text as percentages.
+    """
+    text = prepare_text(text)  # Normalize text, e.g., converting to uppercase and removing non-alphabetic characters.
+
+    # Initialize counters with all letters in the alphabet, and empty dictionaries for bigrams and trigrams.
     letter_counts = {letter: 0 for letter in string.ascii_uppercase}
     bigram_counts = {}
     trigram_counts = {}
 
-    # Count letters
+    # Count occurrences of each letter.
     for letter in text:
         if letter in letter_counts:
             letter_counts[letter] += 1
 
-    # Count bigrams
+    # Count occurrences of each bigram.
     for i in range(len(text) - 1):
         bigram = text[i:i + 2]
-        if bigram.isalpha():
+        if bigram.isalpha():  # Ensure bigram consists of letters only.
             bigram_counts[bigram] = bigram_counts.get(bigram, 0) + 1
 
-    # Count trigrams
+    # Count occurrences of each trigram.
     for i in range(len(text) - 2):
         trigram = text[i:i + 3]
-        if trigram.isalpha():
+        if trigram.isalpha():  # Ensure trigram consists of letters only.
             trigram_counts[trigram] = trigram_counts.get(trigram, 0) + 1
 
-    # Convert counts to frequencies
+    # Convert counts to frequencies (percentages).
     total_letters = sum(letter_counts.values())
     letter_frequencies = {letter: (count / total_letters) * 100 for letter, count in letter_counts.items()}
 
@@ -204,13 +216,26 @@ def generate_frequency_data(text):
 
 
 def compute_chi_squared(observed, expected, text_length):
+    """
+    Compute the chi-squared statistic for observed vs. expected frequencies.
+
+    Parameters:
+    - observed (dict): Observed counts of items (letters, bigrams, trigrams).
+    - expected (dict): Expected frequencies of items as percentages.
+    - text_length (int): Total number of items considered in the observed text.
+
+    Returns:
+    - normalized_chi_squared (float): The chi-squared statistic normalized by text length,
+      indicating the deviation of observed from expected frequencies.
+    """
     chi_squared = 0
     for key in expected:
-        observed_freq = observed.get(key, 0)
-        expected_freq = expected[key] * text_length / 100  # Convert expected percentage to count
+        observed_freq = observed.get(key, 0)  # Get observed count, defaulting to 0 if not found.
+        expected_freq = expected[key] * text_length / 100  # Convert expected percentage to count.
+        # Compute chi-squared component for this item.
         chi_squared += ((observed_freq - expected_freq) ** 2) / expected_freq if expected_freq > 0 else 0
 
-    # Normalize by text length
+    # Normalize chi-squared by text length to account for text size variations.
     normalized_chi_squared = chi_squared / text_length
     return normalized_chi_squared
 
