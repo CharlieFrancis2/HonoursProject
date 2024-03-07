@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
 import numpy as np
+from tkinter import filedialog
 
 # Importing cipher functions and analysis utilities
 from analysis.utility import gcd
@@ -9,17 +10,25 @@ from analysis.frequency_data import letter_frequencies as exp_letter, bigram_fre
     trigram_frequencies as exp_tri
 from ciphers.caesar import encode as encode_caesar, decode as decode_caesar, chi_cryptanalysis as cryptanalyse_caesar
 from ciphers.hill import encode as encode_hill, decode as decode_hill
-from ciphers.vigenere import encode as encode_vigenere, decode as decode_vigenere
-
-
-def cryptanalyse_vigenere(text):
-    """Placeholder function for Vigenère cipher cryptanalysis."""
-    pass
-
+from ciphers.vigenere import encode as encode_vigenere, decode as decode_vigenere, cryptanalyse as cryptanalyse_vigenere
 
 def cryptanalyse_hill(text):
     """Placeholder function for Hill cipher cryptanalysis."""
     pass
+
+
+def upload_file():
+    """Open a file dialog to upload a text file and set its content to the input_text widget."""
+    filepath = filedialog.askopenfilename(
+        title="Open a text file",
+        filetypes=(("Text files", "*.txt"), ("All files", "*.*"))
+    )
+
+    if filepath:  # if a file was selected
+        with open(filepath, 'r', encoding='utf-8') as file:
+            text = file.read()
+            input_text.delete("1.0", tk.END)  # Clear the current content
+            input_text.insert(tk.END, text)  # Insert the text from the file
 
 
 def validate_and_convert_hill_key(key_str):
@@ -60,6 +69,7 @@ def perform_operation():
     """
     Performs the selected cipher operation (encode, decode, cryptanalyse) based on user input.
     """
+    global output
     text = input_text.get("1.0", "end-1c")
     key_str = key_entry.get()
     cipher = cipher_choice.get()
@@ -101,11 +111,51 @@ def perform_operation():
     elif operation == 'Decode':
         output = operations[cipher][1](text, key)
     else:  # Cryptanalyse is a separate path, potentially requiring different parameters
-        output = operations[cipher][2](text, exp_letter, exp_bi, exp_tri, output_text)
+        if cipher == 'Caesar':
+            output = operations[cipher][2](text, exp_letter, exp_bi, exp_tri, output_text)
+        elif cipher == 'Vigenere':
+            max_key_length = int(max_key_length_entry.get())
+            operations[cipher][2](text, max_key_length, print_to_gui_terminal, update_output, update_status_callback)
 
     output_text.insert("1.0", output)
 
 
+# Function to print to the terminal_output_text in the cipher_info_frame
+def print_to_gui_terminal(message):
+    """
+    Appends a message to the cipher_info_text Text widget.
+    """
+    cipher_info_text.insert(tk.END, message + "\n")
+    cipher_info_text.see(tk.END)
+    root.update_idletasks()
+
+def update_output(result):
+    output_text.delete("1.0", "end")
+    output_text.insert("1.0", result)
+
+# Update this status label with a message like so:
+def update_status_callback(message):
+    status_label.configure(text=message)
+    status_label.update_idletasks()
+
+
+# Function to select a cipher and update the GUI accordingly
+def select_cipher(cipher_name):
+    # Update selected cipher
+    cipher_choice.set(cipher_name)
+    # Update key format example based on selected cipher
+    update_key_format_example()
+    # Print selection to terminal
+    print_to_gui_terminal(f"Cipher selected: {cipher_name}")
+    # Show or hide max key length input for Vigenere cipher
+    if cipher_name == "Vigenere":
+        max_key_length_label.pack(anchor=tk.W)
+        max_key_length_entry.pack(padx=5, pady=5, fill=tk.X)
+    else:
+        max_key_length_label.pack_forget()
+        max_key_length_entry.pack_forget()
+
+# Function to update key format example based on the selected cipher
 def update_key_format_example(*args):
     """
     Updates the key format example label based on the selected cipher type.
@@ -117,72 +167,91 @@ def update_key_format_example(*args):
         key_format_label.configure(text="Example: KEYWORD (Alphabetic)")
     elif cipher == 'Hill':
         key_format_label.configure(text="Example: Matrix size and values")
+    elif cipher == 'Enigma':
+        key_format_label.configure(text="Example: Enigma settings")
     else:
         key_format_label.configure(text="Select a cipher")
-
-
-def print_to_gui_terminal(message):
-    """
-    Appends a message to the terminal_output_text Text widget.
-    """
-    terminal_output_text.insert(tk.END, message + "\n")
-    terminal_output_text.see(tk.END)
-    root.update_idletasks()
-
 
 # GUI Setup
 ctk.set_appearance_mode("dark")  # Set to "light" or "dark"
 ctk.set_default_color_theme("dark-blue")  # Set color theme
 root = ctk.CTk()  # Create a CTk window instead of Tk
 root.title("Cipher GUI")
-
-# Setting the initial size to a square of 800x800 pixels
 root.geometry("1000x800")
 
-# Main frame configuration (without padding argument)
+# Main frame configuration
 mainframe = ctk.CTkFrame(root)
-mainframe.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)  # Manage padding here
+mainframe.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
-# Left frame for options (without padding argument, manage padding during packing)
-left_frame = ctk.CTkFrame(mainframe)
-left_frame.pack(side=tk.LEFT, padx=(10, 5), pady=10, fill=tk.BOTH, expand=True)
+# Cipher buttons frame at the top
+cipher_buttons_frame = ctk.CTkFrame(mainframe)
+cipher_buttons_frame.pack(side=tk.TOP, fill=tk.X)
 
-# Right frame for input/output areas (without padding argument, manage padding during packing)
-right_frame = ctk.CTkFrame(mainframe)
-right_frame.pack(side=tk.RIGHT, padx=(5, 10), pady=10, fill=tk.BOTH, expand=True)
+# Cipher info frame on the right
+cipher_info_frame = ctk.CTkFrame(mainframe)
+cipher_info_frame.pack(side=tk.RIGHT, padx=(5, 10), pady=10, fill=tk.BOTH, expand=True)
 
-# Left side components: Key entry and cipher selection
-ctk.CTkLabel(left_frame, text="Key:").pack(anchor=tk.W)
-key_entry = ctk.CTkEntry(left_frame)
+# Cipher info panel
+cipher_info_text = ctk.CTkTextbox(cipher_info_frame, height=10, width=50)
+cipher_info_text.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
+
+# Options frame on the left
+options_frame = ctk.CTkFrame(mainframe)
+options_frame.pack(side=tk.LEFT, padx=(10, 5), pady=10, fill=tk.BOTH, expand=True)
+
+
+# Input/Output frame in the middle
+io_frame = ctk.CTkFrame(mainframe)
+io_frame.pack(side=tk.LEFT, padx=(5, 5), pady=10, fill=tk.BOTH, expand=True)
+
+# Create a status label in your GUI setup
+status_label = ctk.CTkLabel(cipher_info_frame, text="")
+status_label.pack(padx=5, pady=5)
+
+# Cipher selection variable
+cipher_choice = tk.StringVar()
+
+# Cipher buttons
+ciphers = ["Caesar", "Vigenere", "Hill", "Enigma"]
+cipher_buttons = {}
+for cipher in ciphers:
+    cipher_buttons[cipher] = ctk.CTkButton(cipher_buttons_frame, text=cipher, command=lambda c=cipher: select_cipher(c))
+    cipher_buttons[cipher].pack(side=tk.LEFT, padx=5, pady=5, fill=tk.X, expand=True)
+
+# Options components
+ctk.CTkLabel(options_frame, text="Key:").pack(anchor=tk.W)
+key_entry = ctk.CTkEntry(options_frame)
 key_entry.pack(padx=5, pady=5, fill=tk.X)
 
-key_format_label = ctk.CTkLabel(left_frame, text="Example: 3 (Shift amount)")
+key_format_label = ctk.CTkLabel(options_frame, text="Example: 3 (Shift amount)")
 key_format_label.pack(anchor=tk.W)
 
-cipher_choice = tk.StringVar()
-cipher_dropdown = ctk.CTkOptionMenu(left_frame, variable=cipher_choice, values=('Caesar', 'Vigenere', 'Hill'))
-cipher_dropdown.pack(padx=5, pady=5, fill=tk.X)
-cipher_choice.set("Caesar")
-cipher_choice.trace('w', update_key_format_example)
-
 operation_var = tk.StringVar(value="Encode")
-ctk.CTkRadioButton(left_frame, text="Encode", variable=operation_var, value="Encode").pack(anchor=tk.W, padx=5, pady=5)
-ctk.CTkRadioButton(left_frame, text="Decode", variable=operation_var, value="Decode").pack(anchor=tk.W, padx=5, pady=5)
-ctk.CTkRadioButton(left_frame, text="Cryptanalyse", variable=operation_var, value="Cryptanalyse").pack(anchor=tk.W, padx=5, pady=5)
+ctk.CTkRadioButton(options_frame, text="Encode", variable=operation_var, value="Encode").pack(anchor=tk.W, padx=5, pady=5)
+ctk.CTkRadioButton(options_frame, text="Decode", variable=operation_var, value="Decode").pack(anchor=tk.W, padx=5, pady=5)
+ctk.CTkRadioButton(options_frame, text="Cryptanalyse", variable=operation_var, value="Cryptanalyse").pack(anchor=tk.W, padx=5, pady=5)
 
-# Right side components: Input and output areas
-ctk.CTkLabel(right_frame, text="Plaintext/Ciphertext:").pack(anchor=tk.W)
-input_text = ctk.CTkTextbox(right_frame, height=10, width=50)
+# Add an Upload File button to the left options frame
+upload_button = ctk.CTkButton(options_frame, text="Upload File", command=upload_file)
+upload_button.pack(padx=5, pady=5, fill=tk.X)
+
+# Input/Output components
+ctk.CTkLabel(io_frame, text="Plaintext/Ciphertext:").pack(anchor=tk.W)
+input_text = ctk.CTkTextbox(io_frame, height=10, width=50)
 input_text.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
 
-ctk.CTkButton(right_frame, text="Perform Operation", command=perform_operation).pack(padx=5, pady=5, fill=tk.X)
+ctk.CTkButton(io_frame, text="Perform Operation", command=perform_operation).pack(padx=5, pady=5, fill=tk.X)
 
-ctk.CTkLabel(right_frame, text="Output:").pack(anchor=tk.W)
-output_text = ctk.CTkTextbox(right_frame, height=10, width=50)
+output_text = ctk.CTkTextbox(io_frame, height=10, width=50)
 output_text.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
 
-ctk.CTkLabel(right_frame, text="Cryptanalysis Process:").pack(anchor=tk.W)
-terminal_output_text = ctk.CTkTextbox(right_frame, height=10, width=50)
-terminal_output_text.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
+# Additional components for Vigenere cipher in the cipher_info_frame
+max_key_length_label = ctk.CTkLabel(cipher_info_frame, text="Max Key Length:")
+max_key_length_entry = ctk.CTkEntry(cipher_info_frame)
+
+# Initial cipher selection update
+select_cipher("Caesar")
 
 root.mainloop()
+
+

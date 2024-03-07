@@ -1,34 +1,4 @@
-# TODO: Vigenère Cipher Cryptanalysis Program Outline:
-#    Step 1: Estimate Key Length
-#        DONE ---------- Calculate and save the Index of Coincidence (IC) for key lengths up to the maximum (10).
-#       Identify and save the top 3 key lengths based on their closeness to the expected IC of English.
-#    Step 2: Detailed Frequency Analysis for Each Stream
-#       For each of the top 3 key lengths:
-#            Segment the cipher text into streams by this key length.
-#            For each stream:
-#               Perform detailed frequency analysis.
-#                 Save the top 3 shift guesses for each stream.
-#   Step 3: Generate Key Combinations
-#        For each key length among the top 3:
-#           Generate all possible keys by combining the top 3 shift guesses for each stream.
-#           This results in a large number of possible keys (3^N for each key length, where N is the key length).
-#   Step 4: Decrypt and Score Each Key Combination
-#       For each possible key generated in the previous step:
-#          Decrypt the cipher text using this key.
-#          Score the decryption using a heuristic (e.g., chi-squared test for letter frequency).
-#          Optionally, further analyze the text for "English-ness" by checking for common words or patterns.
-#          Save the decryption score along with the key and the decrypted text.
-#   Step 5: Rank and Select Top Guesses
-#         Sort all decrypted texts by their scores.
-#        Select the top 5 decryptions based on these scores.
-#        Present these top 5 guesses, ensuring at least one is likely correct based on the scoring.
-#   Additional Considerations:
-#       - Efficiency: Given the potential for a large number of combinations, focus on optimizing the scoring and
-#           decryption process. Parallel processing can help manage the computational load.
-#       - Scoring Heuristics: Develop robust scoring heuristics that can accurately assess the likelihood of a
-#           decryption being correct. This might include a combination of statistical tests and language analysis.
-#       - Iterative Refinement: If initial guesses do not yield satisfactory results, consider refining your
-#           approach by adjusting the criteria for selecting top key lengths or by enhancing the scoring mechanism.
+
 import itertools
 from analysis.frequency_data import (letter_frequencies as exp_letter, bigram_frequencies as exp_bi, trigram_frequencies as exp_tri)
 from analysis import utility as util
@@ -84,7 +54,7 @@ def decode(cipher_text, key):
     return plaintext
 
 
-def cryptanalyse(cipher_text, max_key_length):
+def cryptanalyse(cipher_text, max_key_length, update_terminal_callback, update_output_callback, update_status_callback):
     cipher_text = util.prepare_text(cipher_text)
 
     # Function to calculate the Index of Coincidence (IC)
@@ -111,6 +81,7 @@ def cryptanalyse(cipher_text, max_key_length):
         This function modifies all_possible_keys in place by appending new keys to it.
         """
         # Define the alphabet for shift-to-letter conversion
+        update_terminal_callback("Generating Keyset...")
         alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
         # Extract just the shifts from each stream's top guesses
@@ -122,7 +93,10 @@ def cryptanalyse(cipher_text, max_key_length):
             key = ''.join([alphabet[shift] for shift in combination])
             all_possible_keys.append(key)  # Append each generated key in letter format to the main list
 
+        update_terminal_callback("Done! Generated " + str(len(all_possible_keys)) + "keys!")
+
     # Estimate Key Length
+    update_terminal_callback("Estimating Key Length...")
     data = [[i, 0] for i in range(1, max_key_length + 1)]
     for key_length in range(1, max_key_length + 1):
         matrix = create_matrix(key_length, cipher_text)
@@ -130,10 +104,12 @@ def cryptanalyse(cipher_text, max_key_length):
         average_ic = sum(ic_values) / len(ic_values)
         data[key_length - 1][1] = average_ic
 
-    # Sort by IC values to find the most likely key lengths
+    # -----------------------------------------------------------------------------------------------------------------
+    # SORT BY IC VALUES AND CHOOSE HOW MANY TO SAVE (1)
     sorted_data = sorted(data, key=lambda row: abs(row[1] - 0.0686))[:2]  # Top 3 key lengths
+    update_terminal_callback("Done! : " + str(sorted_data[0][0]))
+    # -----------------------------------------------------------------------------------------------------------------
 
-    # ----------------------------------------------------------------------------------
     # Step 2: Detailed Frequency Analysis for Each Stream
     # loop through key lengths
 
@@ -148,24 +124,26 @@ def cryptanalyse(cipher_text, max_key_length):
             for shift in range(26):  # Test each possible shift
                 decrypted_stream = c_decode(stream, shift)
                 letter_frequencies = util.generate_frequency_data(decrypted_stream)
-                chi_squared = util.compute_chi_squared(letter_frequencies[0], exp_letter,
-                                                       len(decrypted_stream))  # Assuming letter_frequencies[0] is correct
+                chi_squared = util.compute_chi_squared(letter_frequencies[0], exp_letter, len(decrypted_stream))
+                # Assuming letter_frequencies[0] is correct
                 shift_scores.append((shift, chi_squared))
 
+            # ---------------------------------------------------------------------------------------------------------
             top_shifts = sorted(shift_scores, key=lambda x: x[1])[:2]
+            # SAVE TOP SHIFT AMMOUNTS
+            # ---------------------------------------------------------------------------------------------------------
             # print(f"Stream {stream_index}: Top Shifts: {top_shifts}")  # Debugging line to check shifts
             all_stream_shifts.append(top_shifts)
 
         # Step 3: Use all_stream_shifts for each stream to proceed with generating key combinations in the next steps
         generate_all_possible_keys(all_stream_shifts, all_possible_keys)
-        # print(all_possible_keys)
 
     def vigenere_chi_cryptanalysis(text, all_possible_keys, exp_letter, exp_bi, exp_tri):
         results = []
         total_keys = len(all_possible_keys)
 
         for count, key in enumerate(all_possible_keys, start=1):
-            print(f"\rDecoding: {count} out of: {total_keys}", end='', flush=True)
+            update_status_callback(f"Decoding: {count} out of: {total_keys}")
             decoded_text = decode(text, key)  # Adjusted for Vigenère decryption
             letter_freqs, bigram_freqs, trigram_freqs = util.generate_frequency_data(decoded_text)
 
@@ -177,7 +155,7 @@ def cryptanalyse(cipher_text, max_key_length):
 
         print()  # Ensure the next print statement appears on a new line
 
-        results.sort(key=lambda x: x[1])  # Sort the results by the Chi-Squared Letters score primarily
+        results.sort(key=lambda x: x[3])  # Sort the results by the Chi-Squared Letters score primarily
 
         return results
 
@@ -185,8 +163,8 @@ def cryptanalyse(cipher_text, max_key_length):
     results = vigenere_chi_cryptanalysis(cipher_text, all_possible_keys, exp_letter, exp_bi, exp_tri)
 
     # Print Top 3 guesses based on Chi-Squared Letters Score
-    print("Top 3 guesses based on Chi-Squared Letters Score:")
+    update_output_callback("Top 3 guesses based on Chi-Squared Letters Score:")
     for i in range(min(3, len(results))):  # Ensure not to exceed the number of results
         key, chi_letter, chi_bi, chi_tri, decoded_text = results[i]
-        print(f"\nKey: {key}\nDecoded Text Preview: {decoded_text[:100]}...")  # Preview of the decoded text
+        update_output_callback(f"\nKey: {key}\nDecoded Text Preview: {decoded_text[:100]}...")  # Preview of the decoded text
 

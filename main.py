@@ -7,10 +7,10 @@ import tkinter as tk
 plain = u.read_from_file('texts/hobbit.txt')
 # plain = "Hello my name is charlie"
 
-cipher = v_encode(plain, 'abcdefg')
-output_text = ''
+cipher = v_encode(plain, 'jfdnvfvdsbvrhfjhsvburewvboehvbeuwrvbvbasjdvbokjscbvkjrabvuievvfklbeqfvjnefohvbeorihvbajfb')
 
-vigenere_cryptanalyse(cipher, 15)
+
+vigenere_cryptanalyse(cipher, 100, )
 
 
 
