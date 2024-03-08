@@ -61,7 +61,7 @@ def validate_and_convert_hill_key(key_str):
 
 
 def perform_operation():
-    text = input_text.get("1.0", "end-1c")
+    text = input_text.get("1.0", "end-1c").strip()  # Adjust widget variable name as necessary
     key_str = key_entry.get()
     cipher = cipher_choice.get()
     operation = operation_var.get()
@@ -98,8 +98,10 @@ def perform_operation():
     }
 
     if operation == 'Encode':
+        print_to_gui_terminal(f"Encoding with key:\n{key}")
         output = operations[cipher][0](text, key)
     elif operation == 'Decode':
+        print_to_gui_terminal(f"Decoding with key:\n{key}")
         output = operations[cipher][1](text, key)
     else:  # Cryptanalyse is a separate path, potentially requiring different parameters
         if cipher == 'Caesar':

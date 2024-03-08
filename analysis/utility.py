@@ -65,6 +65,20 @@ def prepare_text(text):
     return text
 
 
+def add_padding(text, block_size):
+    # Add padding if necessary
+    padding_length = block_size - (len(text) % block_size)
+    if padding_length != block_size:
+        text += 'X' * padding_length
+    return text
+
+
+# Adjust or add a smarter remove_padding function based on how you decide to handle padding
+def remove_padding(text):
+    # Implement smarter padding removal if necessary
+    return text.rstrip('X')
+
+
 def frequency_analysis(text):
     """
     Performs frequency analysis on the text, counting the occurrence of each alphabetic character.
