@@ -3,6 +3,8 @@ import itertools
 from analysis.frequency_data import (letter_frequencies as exp_letter, bigram_frequencies as exp_bi, trigram_frequencies as exp_tri)
 from analysis import utility as util
 from ciphers.caesar import decode as c_decode
+import tkinter as tk
+
 
 
 def encode(plain_text, key):
@@ -54,7 +56,10 @@ def decode(cipher_text, key):
     return plaintext
 
 
-def cryptanalyse(cipher_text, max_key_length, update_terminal_callback, update_output_callback, update_status_callback):
+def cryptanalyse(cipher_text, max_key_length, update_terminal_callback, output_text, update_status_callback):
+    KEY_LENGTHS_GUESSES = 1
+    SHIFT_LENGTH_GUESSES = 2
+
     cipher_text = util.prepare_text(cipher_text)
 
     # Function to calculate the Index of Coincidence (IC)
@@ -93,7 +98,7 @@ def cryptanalyse(cipher_text, max_key_length, update_terminal_callback, update_o
             key = ''.join([alphabet[shift] for shift in combination])
             all_possible_keys.append(key)  # Append each generated key in letter format to the main list
 
-        update_terminal_callback("Done! Generated " + str(len(all_possible_keys)) + "keys!")
+        update_terminal_callback("Done! Generated " + str(len(all_possible_keys)) + " keys!")
 
     # Estimate Key Length
     update_terminal_callback("Estimating Key Length...")
@@ -106,7 +111,7 @@ def cryptanalyse(cipher_text, max_key_length, update_terminal_callback, update_o
 
     # -----------------------------------------------------------------------------------------------------------------
     # SORT BY IC VALUES AND CHOOSE HOW MANY TO SAVE (1)
-    sorted_data = sorted(data, key=lambda row: abs(row[1] - 0.0686))[:2]  # Top 3 key lengths
+    sorted_data = sorted(data, key=lambda row: abs(row[1] - 0.0686))[:KEY_LENGTHS_GUESSES]  # Top 3 key lengths
     update_terminal_callback("Done! : " + str(sorted_data[0][0]))
     # -----------------------------------------------------------------------------------------------------------------
 
@@ -129,14 +134,14 @@ def cryptanalyse(cipher_text, max_key_length, update_terminal_callback, update_o
                 shift_scores.append((shift, chi_squared))
 
             # ---------------------------------------------------------------------------------------------------------
-            top_shifts = sorted(shift_scores, key=lambda x: x[1])[:2]
-            # SAVE TOP SHIFT AMMOUNTS
+            top_shifts = sorted(shift_scores, key=lambda x: x[1])[:SHIFT_LENGTH_GUESSES]
+            # SAVE TOP SHIFT AMOUNTS
             # ---------------------------------------------------------------------------------------------------------
             # print(f"Stream {stream_index}: Top Shifts: {top_shifts}")  # Debugging line to check shifts
             all_stream_shifts.append(top_shifts)
 
-        # Step 3: Use all_stream_shifts for each stream to proceed with generating key combinations in the next steps
-        generate_all_possible_keys(all_stream_shifts, all_possible_keys)
+    # Step 3: Use all_stream_shifts for each stream to proceed with generating key combinations in the next steps
+    generate_all_possible_keys(all_stream_shifts, all_possible_keys)
 
     def vigenere_chi_cryptanalysis(text, all_possible_keys, exp_letter, exp_bi, exp_tri):
         results = []
@@ -153,8 +158,6 @@ def cryptanalyse(cipher_text, max_key_length, update_terminal_callback, update_o
 
             results.append((key, chi_letter, chi_bi, chi_tri, decoded_text))
 
-        print()  # Ensure the next print statement appears on a new line
-
         results.sort(key=lambda x: x[3])  # Sort the results by the Chi-Squared Letters score primarily
 
         return results
@@ -162,9 +165,15 @@ def cryptanalyse(cipher_text, max_key_length, update_terminal_callback, update_o
     # Perform cryptanalysis
     results = vigenere_chi_cryptanalysis(cipher_text, all_possible_keys, exp_letter, exp_bi, exp_tri)
 
-    # Print Top 3 guesses based on Chi-Squared Letters Score
-    update_output_callback("Top 3 guesses based on Chi-Squared Letters Score:")
+    # Initialize output string for Tkinter Text widget
+    output_str = "Top 3 guesses based on Chi-Squared Letters Score:\n"
     for i in range(min(3, len(results))):  # Ensure not to exceed the number of results
         key, chi_letter, chi_bi, chi_tri, decoded_text = results[i]
-        update_output_callback(f"\nKey: {key}\nDecoded Text Preview: {decoded_text[:100]}...")  # Preview of the decoded text
+        output_str += f"\nKey: {key}\n"
+        output_str += f"Decoded Text Preview: {decoded_text[:100]}...\n"  # Preview of the decoded text
+
+    # Clear previous output and display new results
+    output_text.delete("1.0", tk.END)  # Clear existing text
+    output_text.insert(tk.END, output_str)  # Insert new output string
+
 
