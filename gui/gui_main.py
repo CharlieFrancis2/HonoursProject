@@ -10,6 +10,16 @@ from ciphers.caesar import encode as encode_caesar, decode as decode_caesar, chi
 from ciphers.hill import encode as encode_hill, decode as decode_hill
 from ciphers.vigenere import encode as encode_vigenere, decode as decode_vigenere, cryptanalyse as cryptanalyse_vigenere
 
+# TODO:
+#   Flesh out Caesar information
+#   Flesh out Vigenere information
+#   Implement Vigenere AutoKey
+#   Implement Hill Cryptanalysis
+#   Implement Enigma encoding/decoding
+#   Multiple Language Support
+#   File Format compatability
+#   Continue refining gui
+
 
 def cryptanalyse_hill(text):
     """Placeholder function for Hill cipher cryptanalysis."""
