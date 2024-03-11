@@ -1,48 +1,89 @@
 from analysis import utility as util
 import tkinter as tk
+from tabulate import tabulate
+
+from tabulate import tabulate
 
 
-def encode(plain_text, key):
+def encode(plain_text, key, update_terminal_callback):
     # Convert to uppercase and remove leading/trailing whitespaces
     plain_text = util.prepare_text(plain_text)
     cipher_text = ''
 
-    for char in plain_text:
-        # Check if the character is an alphabet letter
+    # Prepare data for the table, limited to first 10 characters
+    data = []
+    for i, char in enumerate(plain_text):
         if char.isalpha():
-            # Shift the character and handle wrap-around
-            new_char = chr((ord(char) - ord('A') + key) % 26 + ord('A'))
-            cipher_text += new_char
-        # Skip over spaces and non-alphabetic characters
+            shift_value = (ord(char) - ord('A') + key) % 26
+            new_char = chr(shift_value + ord('A'))
         else:
-            cipher_text += char
+            new_char = char
 
+        cipher_text += new_char
+
+        # Add to table only if within the first 10 characters
+        if i < 10:
+            if char.isalpha():
+                data.append([char, f"+{key}", new_char])
+            else:
+                data.append([char, "-", char])
+
+    # Generate table string using 'plain' format for better alignment, but only for the first 10 characters
+    if data:  # Check if there's anything to display (in case the text is very short)
+        table_str = tabulate(data, headers=["Char", "Shift", "Result"], tablefmt="plain")
+        display_message = f"Encoding with key: {key}\n{table_str}"
+    else:
+        display_message = "Encoding process (text too short for detailed display)"
+
+    # Send the display message to the GUI
+    update_terminal_callback(display_message)
+
+    # Return the full encoded text
     return cipher_text
 
 
-def decode(cipher_text, key):
+def decode(cipher_text, key, update_terminal_callback):
     # Convert to uppercase and remove leading/trailing whitespaces
     cipher_text = util.prepare_text(cipher_text)
-    plaintext = ""
+    plaintext = ''
 
-    for char in cipher_text:
-        # Check if the character is an alphabet letter
+    # Prepare data for the table, limited to first 10 characters
+    data = []
+    for i, char in enumerate(cipher_text):
         if char.isalpha():
-            # Shift the character back and handle wrap-around
-            new_char = chr((ord(char) - ord('A') - key) % 26 + ord('A'))
-            plaintext += new_char
+            shift_value = (ord(char) - ord('A') - key) % 26
+            new_char = chr(shift_value + ord('A'))
         else:
-            # If it's not an alphabet letter skip over it
-            plaintext += char
+            new_char = char
 
+        plaintext += new_char
+
+        # Add to table only if within the first 10 characters
+        if i < 10:
+            if char.isalpha():
+                data.append([char, f"-{key}", new_char])
+            else:
+                data.append([char, "-", char])
+
+    # Generate table string using 'plain' format for better alignment, but only for the first 10 characters
+    if data:  # Check if there's anything to display (in case the text is very short)
+        table_str = tabulate(data, headers=["Char", "Shift", "Result"], tablefmt="plain")
+        display_message = f"Decoding with key: {key}\n{table_str}"
+    else:
+        display_message = "Decoding process (text too short for detailed display)"
+
+    # Send the display message to the GUI
+    update_terminal_callback(display_message)
+
+    # Return the full decoded text
     return plaintext
 
 
-def chi_cryptanalysis(text, exp_letter, exp_bi, exp_tri, output_text):
+def chi_cryptanalysis(text, exp_letter, exp_bi, exp_tri, output_text, update_terminal_callback):
     results = []
 
     for key in range(26):
-        decoded_text = decode(text, key)
+        decoded_text = decode(text, key, update_terminal_callback)
         letter_freqs, bigram_freqs, trigram_freqs = util.generate_frequency_data(decoded_text)
 
         chi_letter = util.compute_chi_squared(letter_freqs, exp_letter, len(decoded_text))

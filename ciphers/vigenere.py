@@ -7,7 +7,7 @@ import tkinter as tk
 
 
 
-def encode(plain_text, key):
+def encode(plain_text, key, update_terminal_callback):
     # Convert to uppercase and remove leading/trailing whitespaces
     plain_text = util.prepare_text(plain_text)
 
@@ -32,7 +32,7 @@ def encode(plain_text, key):
     return cipher_text
 
 
-def decode(cipher_text, key):
+def decode(cipher_text, key, update_terminal_callback):
     # Convert to uppercase and remove leading/trailing whitespaces
     cipher_text = util.prepare_text(cipher_text)
 

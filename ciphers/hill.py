@@ -66,10 +66,3 @@ def decode(text, key_matrix):
     return remove_padding(decoded_text)  # Adjust based on your padding strategy
 
 
-plain = 'hello'
-key = np.array([[5, 17], [4, 15]])
-print(plain)
-print(key)
-
-ciphertext = encode(plain, key)
-print(decode(ciphertext, key))

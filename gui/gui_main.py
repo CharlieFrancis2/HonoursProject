@@ -109,13 +109,13 @@ def perform_operation():
 
     if operation == 'Encode':
         print_to_gui_terminal(f"Encoding with key:\n{key}")
-        output = operations[cipher][0](text, key)
+        output = operations[cipher][0](text, key, print_to_gui_terminal)
     elif operation == 'Decode':
         print_to_gui_terminal(f"Decoding with key:\n{key}")
-        output = operations[cipher][1](text, key)
+        output = operations[cipher][1](text, key, print_to_gui_terminal)
     else:  # Cryptanalyse is a separate path, potentially requiring different parameters
         if cipher == 'Caesar':
-            output = operations[cipher][2](text, exp_letter, exp_bi, exp_tri, output_text)
+            output = operations[cipher][2](text, exp_letter, exp_bi, exp_tri, output_text, print_to_gui_terminal)
         elif cipher == 'Vigenere':
             output_text.delete("1.0", tk.END)  # Clear existing text
             max_key_length = int(max_key_length_entry.get())
@@ -188,10 +188,12 @@ mainframe.pack(padx=20, pady=20, fill=tk.BOTH, expand=True)
 
 # Widget Styles
 font_style = ('Arial', 10)
+mono_font_style = ('Courier', 10)
 button_style = {'font': font_style, 'bg': button_color, 'fg': text_color, 'activebackground': button_color,
                 'activeforeground': text_color}
 label_style = {'font': font_style, 'bg': background_color, 'fg': foreground_color}
 entry_style = {'font': font_style, 'bg': input_bg, 'fg': text_color, 'insertbackground': text_color}
+entry_style2 = {'font': mono_font_style, 'bg': input_bg, 'fg': text_color, 'insertbackground': text_color}
 text_style = {'font': font_style, 'bg': text_widget_bg, 'fg': text_color}
 
 # Cipher selection
@@ -246,7 +248,7 @@ max_key_length_entry = tk.Entry(options_frame, **entry_style)
 status_label = tk.Label(cipher_info_frame, text="Status updates appear here", **label_style)
 status_label.pack(padx=5, pady=0)
 
-cipher_info_text = tk.Text(cipher_info_frame, height=10, width=50, **text_style)
+cipher_info_text = tk.Text(cipher_info_frame, height=10, width=50, **entry_style2)
 cipher_info_text.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
 
 # Now, create and pack the file upload button at the bottom of the options_frame
