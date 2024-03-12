@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import numpy as np
+import threading
 
 # Import cipher functions and analysis utilities
 from analysis.utility import gcd
@@ -11,7 +12,7 @@ from ciphers.hill import encode as encode_hill, decode as decode_hill
 from ciphers.vigenere import encode as encode_vigenere, decode as decode_vigenere, cryptanalyse as cryptanalyse_vigenere
 
 # TODO:
-#   Flesh out Caesar information
+#   DONE Flesh out Caesar information
 #   Flesh out Vigenere information
 #   Implement Vigenere AutoKey
 #   Implement Hill Cryptanalysis
@@ -70,6 +71,42 @@ def validate_and_convert_hill_key(key_str):
     return True, key_matrix
 
 
+def start_operation_in_thread(operation, callback, *args):
+    """
+    Starts the specified operation in a separate thread and uses a callback function to handle the result.
+    """
+
+    def operation_wrapper():
+        try:
+            result = operation(*args)
+            root.after(0, callback, result)
+        except Exception as e:
+            print(f"Error during operation: {e}")
+            root.after(0, callback, f"Error: {e}")
+
+    operation_thread = threading.Thread(target=operation_wrapper)
+    operation_thread.daemon = True
+    operation_thread.start()
+
+
+def update_output_text(result):
+    """
+    Callback function to update the GUI with the result of an operation.
+    """
+    print("Updating GUI with result...")  # Diagnostic print
+
+    # Check if result is not a string and convert it accordingly
+    if not isinstance(result, str):
+        # Assuming result could be a list of tuples like cryptanalysis results,
+        # you might want to format it as a string in a readable way
+        result_str = "\n".join([str(r) for r in result])
+    else:
+        result_str = result
+
+    output_text.delete("1.0", "end")
+    output_text.insert("1.0", result_str)
+
+
 def perform_operation():
     text = input_text.get("1.0", "end-1c").strip()  # Adjust widget variable name as necessary
     key_str = key_entry.get()
@@ -107,22 +144,18 @@ def perform_operation():
         'Hill': (encode_hill, decode_hill, cryptanalyse_hill),
     }
 
+    # Correctly start the operation in a thread and handle the result via a callback
     if operation == 'Encode':
-        print_to_gui_terminal(f"Encoding with key:\n{key}")
-        output = operations[cipher][0](text, key, print_to_gui_terminal)
+        start_operation_in_thread(operations[cipher][0], update_output_text, text, key, print_to_gui_terminal)
     elif operation == 'Decode':
-        print_to_gui_terminal(f"Decoding with key:\n{key}")
-        output = operations[cipher][1](text, key, print_to_gui_terminal)
-    else:  # Cryptanalyse is a separate path, potentially requiring different parameters
-        if cipher == 'Caesar':
-            output = operations[cipher][2](text, exp_letter, exp_bi, exp_tri, output_text, print_to_gui_terminal)
-        elif cipher == 'Vigenere':
-            output_text.delete("1.0", tk.END)  # Clear existing text
-            max_key_length = int(max_key_length_entry.get())
-            output = operations[cipher][2](text, max_key_length, print_to_gui_terminal, output_text,
-                                           update_status_callback)
-
-    output_text.insert("1.0", output)
+        start_operation_in_thread(operations[cipher][1], update_output_text, text, key, print_to_gui_terminal)
+    elif operation == 'Cryptanalyse' and cipher == 'Caesar':
+        start_operation_in_thread(operations[cipher][2], update_output_text, text, exp_letter, exp_bi, exp_tri, output_text, print_to_gui_terminal)
+    elif operation == 'Cryptanalyse' and cipher == 'Vigenere':
+        max_key_length = int(max_key_length_entry.get())
+        start_operation_in_thread(operations[cipher][2], update_output_text, text, max_key_length, print_to_gui_terminal, output_text, update_status_callback)
+    else:
+        output_text.insert("1.0", "Operation not supported.")
 
 
 def print_to_gui_terminal(message):
@@ -192,6 +225,7 @@ mono_font_style = ('Courier', 10)
 button_style = {'font': font_style, 'bg': button_color, 'fg': text_color, 'activebackground': button_color,
                 'activeforeground': text_color}
 label_style = {'font': font_style, 'bg': background_color, 'fg': foreground_color}
+scroll_style = {'bg': background_color, 'fg': foreground_color}
 entry_style = {'font': font_style, 'bg': input_bg, 'fg': text_color, 'insertbackground': text_color}
 entry_style2 = {'font': mono_font_style, 'bg': input_bg, 'fg': text_color, 'insertbackground': text_color}
 text_style = {'font': font_style, 'bg': text_widget_bg, 'fg': text_color}
@@ -202,6 +236,7 @@ operation_var = tk.StringVar(value="Encode")
 cipher_buttons = {}
 ciphers = ["Caesar", "Vigenere", "Hill", "Enigma"]
 text_buttons = ["Clear Input", "Clear Output", "Swap I/O"]
+
 
 # Layout Configuration
 cipher_buttons_frame = tk.Frame(mainframe, bg=background_color)
@@ -220,7 +255,7 @@ cipher_info_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=10)
 # Ensure cipher_buttons span the width of the window
 for cipher in ciphers:
     # Assuming 'ciphers' is a list of cipher names and 'cipher_buttons_frame' is the parent widget
-    btn = tk.Button(cipher_buttons_frame, text=cipher, command=lambda c=cipher: select_cipher(c), **button_style)
+    btn = tk.Button(cipher_buttons_frame, text=cipher, command=lambda c=cipher: select_cipher(c), **label_style)
     btn.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
     cipher_buttons[cipher] = btn
 
@@ -249,7 +284,14 @@ status_label = tk.Label(cipher_info_frame, text="Status updates appear here", **
 status_label.pack(padx=5, pady=0)
 
 cipher_info_text = tk.Text(cipher_info_frame, height=10, width=50, **entry_style2)
-cipher_info_text.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
+cipher_info_text.pack(side= tk.LEFT, padx=5, pady=5, fill=tk.BOTH, expand=True)
+
+scroll_bar = tk.Scrollbar(cipher_info_frame, command=cipher_info_text.yview)
+scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
+
+# Configure the text widget to use the scrollbar
+cipher_info_text.config(yscrollcommand=scroll_bar.set)
+
 
 # Now, create and pack the file upload button at the bottom of the options_frame
 upload_button = tk.Button(options_frame, text="Upload File", command=upload_file, **button_style)

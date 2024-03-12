@@ -1,108 +1,122 @@
-from analysis import utility as util
 import tkinter as tk
+from analysis import utility as util
 from tabulate import tabulate
 
-from tabulate import tabulate
 
-
+# --------------------------------------------------------------------------------
+# ENCODE FUNCTION
+# --------------------------------------------------------------------------------
 def encode(plain_text, key, update_terminal_callback):
-    # Convert to uppercase and remove leading/trailing whitespaces
+    """
+    Encode plaintext using a Caesar cipher and display the encoding process.
+
+    Args:
+    - plain_text (str): The text to be encoded.
+    - key (int): The cipher key (shift value).
+    - update_terminal_callback (function): Callback function to update GUI.
+
+    Returns:
+    - str: The encoded ciphertext.
+    """
     plain_text = util.prepare_text(plain_text)
     cipher_text = ''
 
-    # Prepare data for the table, limited to first 10 characters
+    # Data for the visualization table
     data = []
-    for i, char in enumerate(plain_text):
+    for i, char in enumerate(plain_text[:10]):  # Limit to first 10 characters
         if char.isalpha():
             shift_value = (ord(char) - ord('A') + key) % 26
             new_char = chr(shift_value + ord('A'))
+            data.append([char, f"+{key}", new_char])
         else:
             new_char = char
-
+            data.append([char, "-", char])
         cipher_text += new_char
 
-        # Add to table only if within the first 10 characters
-        if i < 10:
-            if char.isalpha():
-                data.append([char, f"+{key}", new_char])
-            else:
-                data.append([char, "-", char])
+    # Display process in the terminal callback
+    table_str = tabulate(data, headers=["Char", "Shift", "Result"], tablefmt="plain") if data else ""
+    display_message = f"Encoding with key: {key}\n{table_str}\n" + "+" * 50
+    update_terminal_callback(display_message if table_str else "Encoding process (text too short for detailed display)")
 
-    # Generate table string using 'plain' format for better alignment, but only for the first 10 characters
-    if data:  # Check if there's anything to display (in case the text is very short)
-        table_str = tabulate(data, headers=["Char", "Shift", "Result"], tablefmt="plain")
-        display_message = f"Encoding with key: {key}\n{table_str}"
-    else:
-        display_message = "Encoding process (text too short for detailed display)"
-
-    # Send the display message to the GUI
-    update_terminal_callback(display_message)
-
-    # Return the full encoded text
     return cipher_text
 
 
-def decode(cipher_text, key, update_terminal_callback):
-    # Convert to uppercase and remove leading/trailing whitespaces
+# --------------------------------------------------------------------------------
+# DECODE FUNCTION
+# --------------------------------------------------------------------------------
+def decode(cipher_text, key, update_terminal_callback, flag):
+    """
+    Decode ciphertext using a Caesar cipher and display the decoding process.
+
+    Args:
+    - cipher_text (str): The text to be decoded.
+    - key (int): The cipher key (shift value).
+    - update_terminal_callback (function): Callback function to update GUI.
+
+    Returns:
+    - str: The decoded plaintext.
+    """
     cipher_text = util.prepare_text(cipher_text)
     plaintext = ''
 
-    # Prepare data for the table, limited to first 10 characters
+    # Data for the visualization table
     data = []
-    for i, char in enumerate(cipher_text):
+    for i, char in enumerate(cipher_text[:10]):  # Limit to first 10 characters
         if char.isalpha():
             shift_value = (ord(char) - ord('A') - key) % 26
             new_char = chr(shift_value + ord('A'))
+            data.append([char, f"-{key}", new_char])
         else:
             new_char = char
-
+            data.append([char, "-", char])
         plaintext += new_char
 
-        # Add to table only if within the first 10 characters
-        if i < 10:
-            if char.isalpha():
-                data.append([char, f"-{key}", new_char])
-            else:
-                data.append([char, "-", char])
+    if flag:
+        # Display process in the terminal callback
+        table_str = tabulate(data, headers=["Char", "Shift", "Result"], tablefmt="plain") if data else ""
+        display_message = f"Decoding with key: {key}\n{table_str}\n" + "+" * 50
+        update_terminal_callback(
+            display_message if table_str else "Decoding process (text too short for detailed display)")
 
-    # Generate table string using 'plain' format for better alignment, but only for the first 10 characters
-    if data:  # Check if there's anything to display (in case the text is very short)
-        table_str = tabulate(data, headers=["Char", "Shift", "Result"], tablefmt="plain")
-        display_message = f"Decoding with key: {key}\n{table_str}"
-    else:
-        display_message = "Decoding process (text too short for detailed display)"
-
-    # Send the display message to the GUI
-    update_terminal_callback(display_message)
-
-    # Return the full decoded text
     return plaintext
 
 
+# --------------------------------------------------------------------------------
+# CHI-SQUARE CRYPTANALYSIS FUNCTION
+# --------------------------------------------------------------------------------
 def chi_cryptanalysis(text, exp_letter, exp_bi, exp_tri, output_text, update_terminal_callback):
+    """
+    Perform a Chi-Square Cryptanalysis on the given text using Caesar cipher.
+
+    Args:
+    - text (str): The text to analyze.
+    - exp_letter (dict): Expected letter frequencies.
+    - exp_bi (dict): Expected bigram frequencies.
+    - exp_tri (dict): Expected trigram frequencies.
+    - output_text (tk.Text): The Tkinter Text widget for output.
+    - update_terminal_callback (function): Callback function to update GUI.
+
+    Results are displayed in the provided Text widget.
+    """
     results = []
 
     for key in range(26):
-        decoded_text = decode(text, key, update_terminal_callback)
+        decoded_text = decode(text, key, lambda x: None)  # Use a dummy callback to suppress output
         letter_freqs, bigram_freqs, trigram_freqs = util.generate_frequency_data(decoded_text)
 
         chi_letter = util.compute_chi_squared(letter_freqs, exp_letter, len(decoded_text))
         chi_bi = util.compute_chi_squared(bigram_freqs, exp_bi, len(decoded_text))
         chi_tri = util.compute_chi_squared(trigram_freqs, exp_tri, len(decoded_text))
 
-        # Append results, including decoded text for later reference
         results.append((key, chi_letter, chi_bi, chi_tri, decoded_text))
 
-    # Sort the results by the Chi-Squared Letters score primarily
-    results.sort(key=lambda x: x[1])
+    results.sort(key=lambda x: x[1])  # Sort by Chi-Squared score
 
-    # Initialize output string for Tkinter Text widget
+    # Prepare output string
     output_str = "Top 3 guesses based on Chi-Squared Letters Score:\n"
-    for i in range(min(3, len(results))):  # Ensure not to exceed the number of results
+    for i in range(min(3, len(results))):
         key, chi_letter, chi_bi, chi_tri, decoded_text = results[i]
-        output_str += f"\nKey: {key}\n"
-        output_str += f"Decoded Text Preview: {decoded_text[:100]}...\n"  # Preview of the decoded text
+        output_str += f"\nKey: {key}\nDecoded Text Preview: {decoded_text[:100]}...\n"
 
-    # Clear previous output and display new results
     output_text.delete("1.0", tk.END)  # Clear existing text
     output_text.insert(tk.END, output_str)  # Insert new output string
