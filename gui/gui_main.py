@@ -16,6 +16,7 @@ from ciphers.vigenere import encode as encode_vigenere, decode as decode_vigener
 #   Flesh out Vigenere information
 #   Implement Vigenere AutoKey
 #   Implement Hill Cryptanalysis
+#   Implement Hill Key Generation
 #   Implement Enigma encoding/decoding
 #   Multiple Language Support
 #   File Format compatability
@@ -153,7 +154,9 @@ def perform_operation():
         start_operation_in_thread(operations[cipher][2], update_output_text, text, exp_letter, exp_bi, exp_tri, output_text, print_to_gui_terminal)
     elif operation == 'Cryptanalyse' and cipher == 'Vigenere':
         max_key_length = int(max_key_length_entry.get())
-        start_operation_in_thread(operations[cipher][2], update_output_text, text, max_key_length, print_to_gui_terminal, output_text, update_status_callback)
+        key_guess = int(key_length_guesses_entry.get())
+        shift_guess = int(shift_guesses_entry.get())
+        start_operation_in_thread(operations[cipher][2], update_output_text, text, max_key_length, key_guess, shift_guess, print_to_gui_terminal, output_text, update_status_callback)
     else:
         output_text.insert("1.0", "Operation not supported.")
 
@@ -221,13 +224,15 @@ mainframe.pack(padx=20, pady=20, fill=tk.BOTH, expand=True)
 
 # Widget Styles
 font_style = ('Arial', 10)
+label_font = ('Arial', 8)
 mono_font_style = ('Courier', 10)
 button_style = {'font': font_style, 'bg': button_color, 'fg': text_color, 'activebackground': button_color,
                 'activeforeground': text_color}
-label_style = {'font': font_style, 'bg': background_color, 'fg': foreground_color}
+label_style = {'font': label_font, 'bg': background_color, 'fg': foreground_color}
 scroll_style = {'bg': background_color, 'fg': foreground_color}
 entry_style = {'font': font_style, 'bg': input_bg, 'fg': text_color, 'insertbackground': text_color}
 entry_style2 = {'font': mono_font_style, 'bg': input_bg, 'fg': text_color, 'insertbackground': text_color}
+entry_style3 = {'font': font_style, 'bg': background_color, 'fg': text_color, 'insertbackground': text_color}
 text_style = {'font': font_style, 'bg': text_widget_bg, 'fg': text_color}
 
 # Cipher selection
@@ -261,36 +266,56 @@ for cipher in ciphers:
 
 # Operation radio buttons
 for operation in ["Encode", "Decode", "Cryptanalyse"]:
-    tk.Radiobutton(options_frame, text=operation, variable=operation_var, value=operation, **label_style,
+    tk.Radiobutton(options_frame, text=operation, variable=operation_var, value=operation, **text_style,
                    selectcolor=background_color).pack(anchor=tk.W, padx=5, pady=2)
+
+
+label1 = tk.Label(options_frame, text="Options", bg=background_color, fg=foreground_color)
+label1.pack(anchor=tk.W)
+label1.config(font=font_style)
 
 # Key entry
 tk.Label(options_frame, text="Key:", **label_style).pack(anchor=tk.W)
 key_entry = tk.Entry(options_frame, **entry_style)
 key_entry.pack(padx=5, pady=5, fill=tk.X)
 
+
 # Define label for key format example
 key_format_label = tk.Label(options_frame, bg=background_color, fg=foreground_color)
 key_format_label.pack(anchor=tk.W)
-key_format_label.config(font=font_style)
+key_format_label.config(font=label_font)
 update_key_format_example()  # Initialize with the default cipher's key format
 
 # Max key length for Vigenere cipher - initially hidden
 max_key_length_label = tk.Label(options_frame, text="Max Key Length (Vigenere only):", **label_style)
 max_key_length_entry = tk.Entry(options_frame, **entry_style)
 
+key_length_guesses_label = tk.Label(options_frame, text="Key Length Guesses Saved:", **label_style)
+key_length_guesses_entry = tk.Entry(options_frame, **entry_style)
+
+shift_guesses_label = tk.Label(options_frame, text="Shift Guess:", **label_style)
+shift_guesses_entry = tk.Entry(options_frame, **entry_style)
+
+# Configuration for cipher_info_text1 without border
+cipher_info_text1 = tk.Text(cipher_info_frame, height=5, width=50, bd=0, highlightthickness=0, **entry_style3)
+cipher_info_text1.pack(side=tk.TOP, padx=5, pady=5, fill=tk.BOTH, expand=True)
+
+# Displaying initial info about cipher in cipher_info_text1
+cipher_info_text1.insert(tk.END, "Current Cipher: Caesar")  # Add any initial text here
+cipher_info_text1.config(state=tk.DISABLED)  # Make it read-only
+
 # Status label and cipher info text box
 status_label = tk.Label(cipher_info_frame, text="Status updates appear here", **label_style)
 status_label.pack(padx=5, pady=0)
 
-cipher_info_text = tk.Text(cipher_info_frame, height=10, width=50, **entry_style2)
-cipher_info_text.pack(side= tk.LEFT, padx=5, pady=5, fill=tk.BOTH, expand=True)
+cipher_info_text = tk.Text(cipher_info_frame, height=33, width=50, **entry_style2)
 
+# Scrollbar for cipher_info_text, pack it close to the Text widget
 scroll_bar = tk.Scrollbar(cipher_info_frame, command=cipher_info_text.yview)
-scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
-
-# Configure the text widget to use the scrollbar
 cipher_info_text.config(yscrollcommand=scroll_bar.set)
+# Pack the scrollbar before the Text widget so it appears attached to it
+scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
+cipher_info_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
 
 # Now, create and pack the file upload button at the bottom of the options_frame
@@ -299,13 +324,13 @@ upload_button.pack(side=tk.BOTTOM, fill=tk.X, padx=5, pady=0)
 
 # Input and output text boxes
 tk.Label(io_frame, text="Plaintext/Ciphertext:", **label_style).pack(anchor=tk.W)
-input_text = tk.Text(io_frame, height=10, width=50, **text_style)
+input_text = tk.Text(io_frame, height=10, width=50, **entry_style2)
 input_text.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
 
 perform_button = tk.Button(io_frame, text="Perform Operation", command=perform_operation, **button_style)
 perform_button.pack(padx=5, pady=5, fill=tk.X)
 
-output_text = tk.Text(io_frame, height=10, width=50, **text_style)
+output_text = tk.Text(io_frame, height=10, width=50, **entry_style2)
 output_text.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
 
 text_buttons_frame = tk.Frame(io_frame, bg=background_color)
@@ -323,16 +348,84 @@ swap_button.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
 
 def select_cipher(cipher_name):
     cipher_choice.set(cipher_name)
+
+    cipher_descriptions = {
+        "Caesar": "The Caesar cipher, named after Julius Caesar who reportedly used it for his private "
+                  "correspondence, is one of the oldest known encryption techniques."
+                  "\n"
+                  "\n"
+                  "It's a type of substitution cipher where each letter in the plaintext is shifted a certain number "
+                  "of places down or up the alphabet. For instance, with a shift of 3, 'A' would be replaced by 'D', "
+                  "'B' would become 'E', and so forth, making it a straightforward yet elegant method for encoding "
+                  "messages."
+                  "\n"
+                  "\n"
+                  "The Caesar cipher is easily cracked due to its simplicity, but it lays the foundational concept "
+                  "for more complex ciphers."
+                  " Example:\nPlain: A B C D E \nCipher(+3): D E F G H\n",
+
+        "Vigenere": "The Vigenère cipher is an advancement in the art of war-time communication, representing a "
+                    "significant step forward from the Caesar cipher by introducing a form of polyalphabetic "
+                    "substitution."
+                    "\n"
+                    "\n"
+                    "It utilizes a keyword to vary the shift for each letter in the plaintext. This key is repeated "
+                    "to match the length of the plaintext message. For example, with a key of 'KEY', 'A' would be "
+                    "shifted by the alphabet position of 'K', 'B' by 'E', and so on. This method creates a more "
+                    "secure encryption, as it produces multiple ciphertext alphabets, making the Vigenère cipher much "
+                    "harder to break without knowledge of the key."
+                    " Example (Key: KEY):\nKey Repeated: K E Y K E \nPlain Text: H E L L O \nCipher Text: R I J M K\n",
+
+        "Hill": "The Hill cipher, developed by Lester S. Hill in 1929, marks a departure from traditional "
+                "substitution ciphers by employing mathematical concepts from linear algebra."
+                "\n"
+                "\n"
+                "It transforms letters into numerical values ('A' = 0, 'B' = 1, ..., 'Z' = 25) and processes blocks "
+                "of text as vectors. These vectors are then multiplied by a key matrix to produce the ciphertext. The "
+                "key is a square matrix that must be invertible under modular arithmetic to ensure that decryption is "
+                "possible. This method allows for the encryption of multiple letters at once, significantly "
+                "increasing the cipher's strength against cryptanalysis."
+                "\n",
+
+        "Enigma": "The Enigma machine, a pinnacle of cryptographic achievement used by Germany during World War II, "
+                  "utilizes a complex system of rotors and a plugboard to achieve an exceptionally high level of "
+                  "encryption."
+                  "\n"
+                  "\n"
+                  "Each press of a letter key advances a rotor, changing the electrical pathway and thus the "
+                  "encryption with every keystroke, which means the same plaintext letter can result in different "
+                  "ciphertext letters throughout a message. This, combined with the plugboard's capability to swap "
+                  "letters before and after they pass through the rotors, added layers of security. Cracking the "
+                  "Enigma cipher, achieved by the Allies, stands as one of the most significant cryptographic feats "
+                  "of the era."
+                  "\n"
+    }
+
+    # Logic for updating cipher_text1 with the current cipher's information
+    cipher_info_text1.config(state=tk.NORMAL)  # Temporarily enable editing to update text
+    cipher_info_text1.delete("1.0", tk.END)  # Clear existing text
+    cipher_info_text1.insert(tk.END, f"Current Cipher: {cipher_name}\n\n")
+    cipher_info_text1.insert(tk.END, cipher_descriptions[cipher_name])
+    cipher_info_text1.config(state=tk.DISABLED)  # Disable editing
+
     # Logic for showing/hiding Vigenere max key length entry
     if cipher_name == "Vigenere":
         max_key_length_label.pack(anchor=tk.W)
         max_key_length_entry.pack(padx=5, pady=5, fill=tk.X)
+        key_length_guesses_label.pack(anchor=tk.W)
+        key_length_guesses_entry.pack(padx=5, pady=5, fill=tk.X)
+        shift_guesses_label.pack(anchor=tk.W)
+        shift_guesses_entry.pack(padx=5, pady=5, fill=tk.X)
     else:
         max_key_length_label.pack_forget()
         max_key_length_entry.pack_forget()
+        key_length_guesses_label.pack_forget()
+        key_length_guesses_entry.pack_forget()
+        shift_guesses_label.pack_forget()
+        shift_guesses_entry.pack_forget()
 
     # Define a color for the pressed button
-    pressed_button_color = '#0a4f67'  # A darker shade, adjust this color as needed
+    pressed_button_color = '#0a4f67'
 
     # Update button styles for all buttons, showing the selected one as 'pressed'
     for cipher, btn in cipher_buttons.items():

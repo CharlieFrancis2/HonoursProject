@@ -74,7 +74,7 @@ def decode(cipher_text, key, update_terminal_callback):
 # --------------------------------------------------------------------------------
 # CRYPTANALYSIS FUNCTION
 # --------------------------------------------------------------------------------
-def cryptanalyse(cipher_text, max_key_length, update_terminal_callback, output_text, update_status_callback):
+def cryptanalyse(cipher_text, max_key_length, key_guess, shift_guess, update_terminal_callback, output_text, update_status_callback):
     """
     Perform cryptanalysis on a given ciphertext with a Vigenère cipher.
 
@@ -85,8 +85,8 @@ def cryptanalyse(cipher_text, max_key_length, update_terminal_callback, output_t
     - output_text (tk.Text): The Text widget to display the analysis results.
     - update_status_callback (function): Callback function for status updates.
     """
-    KEY_LENGTHS_GUESSES = 1
-    SHIFT_LENGTH_GUESSES = 3
+    KEY_LENGTHS_GUESSES = key_guess
+    SHIFT_LENGTH_GUESSES = shift_guess
     cipher_text = util.prepare_text(cipher_text)
 
     def calculate_ic(column_text):
@@ -125,7 +125,6 @@ def cryptanalyse(cipher_text, max_key_length, update_terminal_callback, output_t
 
             key = ''.join([alphabet[shift] for shift in combination])
             all_possible_keys.append(key)
-            update_terminal_callback(key)
             count += 1
 
         update_terminal_callback("Done! Generated " + str(len(all_possible_keys)) + " keys!")
@@ -161,6 +160,7 @@ def cryptanalyse(cipher_text, max_key_length, update_terminal_callback, output_t
 
     generate_all_possible_keys(all_stream_shifts, all_possible_keys, update_terminal_callback, update_status_callback)
 
+    update_terminal_callback("Decoding with possible keys...")
     results = vigenere_chi_cryptanalysis(cipher_text, all_possible_keys, exp_letter, exp_bi, exp_tri,
                                          update_status_callback)
 
@@ -226,7 +226,7 @@ def display_vigenere_decryption_table(ciphertext, decrypted_text, key, update_te
         data.append([encrypted_char, f"-{shift}", decrypted_char])
 
     # Generate the table string
-    table_str = tabulate(data, headers=["Encrypted Char", "Shift", "Decrypted Char"], tablefmt="plain")
+    table_str = tabulate(data, headers=["Encrypted Char", "Shift", "Decrypted Char"], tablefmt="outline")
 
     # Display the table
     display_message = f"Key: {key}\n{table_str}\n" + "+" * 50
