@@ -2,6 +2,7 @@ import tkinter as tk
 from analysis import utility as util
 from tabulate import tabulate
 
+# Define a default no-op callback function for non-GUI usage
 
 # --------------------------------------------------------------------------------
 # ENCODE FUNCTION
@@ -44,7 +45,7 @@ def encode(plain_text, key, update_terminal_callback):
 # --------------------------------------------------------------------------------
 # DECODE FUNCTION
 # --------------------------------------------------------------------------------
-def decode(cipher_text, key, update_terminal_callback, flag):
+def decode(cipher_text, key, update_terminal_callback):
     """
     Decode ciphertext using a Caesar cipher and display the decoding process.
 
@@ -71,12 +72,12 @@ def decode(cipher_text, key, update_terminal_callback, flag):
             data.append([char, "-", char])
         plaintext += new_char
 
-    if flag:
-        # Display process in the terminal callback
-        table_str = tabulate(data, headers=["Char", "Shift", "Result"], tablefmt="plain") if data else ""
-        display_message = f"Decoding with key: {key}\n{table_str}\n" + "+" * 50
-        update_terminal_callback(
-            display_message if table_str else "Decoding process (text too short for detailed display)")
+
+    # Display process in the terminal callback
+    table_str = tabulate(data, headers=["Char", "Shift", "Result"], tablefmt="plain") if data else ""
+    display_message = f"Decoding with key: {key}\n{table_str}\n" + "+" * 50
+    update_terminal_callback(
+        display_message if table_str else "Decoding process (text too short for detailed display)")
 
     return plaintext
 

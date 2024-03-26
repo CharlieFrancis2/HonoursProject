@@ -12,15 +12,11 @@ from ciphers.hill import encode as encode_hill, decode as decode_hill
 from ciphers.vigenere import encode as encode_vigenere, decode as decode_vigenere, cryptanalyse as cryptanalyse_vigenere
 
 # TODO:
-#   DONE Flesh out Caesar information
-#   Flesh out Vigenere information
 #   Implement Vigenere AutoKey
 #   Implement Hill Cryptanalysis
-#   Implement Hill Key Generation
 #   Implement Enigma encoding/decoding
-#   Multiple Language Support
-#   File Format compatability
-#   Continue refining gui
+#   Fix Text Wrapping on descriptions
+#   Fix button hover consistency
 
 
 def cryptanalyse_hill(text):
@@ -147,21 +143,21 @@ def perform_operation():
 
     # Correctly start the operation in a thread and handle the result via a callback
     if operation == 'Encode':
-        start_operation_in_thread(operations[cipher][0], update_output_text, text, key, print_to_gui_terminal)
+        start_operation_in_thread(operations[cipher][0], update_output_text, text, key, update_terminal)
     elif operation == 'Decode':
-        start_operation_in_thread(operations[cipher][1], update_output_text, text, key, print_to_gui_terminal)
+        start_operation_in_thread(operations[cipher][1], update_output_text, text, key, update_terminal)
     elif operation == 'Cryptanalyse' and cipher == 'Caesar':
-        start_operation_in_thread(operations[cipher][2], update_output_text, text, exp_letter, exp_bi, exp_tri, output_text, print_to_gui_terminal)
+        start_operation_in_thread(operations[cipher][2], update_output_text, text, exp_letter, exp_bi, exp_tri, output_text, update_terminal)
     elif operation == 'Cryptanalyse' and cipher == 'Vigenere':
         max_key_length = int(max_key_length_entry.get())
         key_guess = int(key_length_guesses_entry.get())
         shift_guess = int(shift_guesses_entry.get())
-        start_operation_in_thread(operations[cipher][2], update_output_text, text, max_key_length, key_guess, shift_guess, print_to_gui_terminal, output_text, update_status_callback)
+        start_operation_in_thread(operations[cipher][2], update_output_text, text, max_key_length, key_guess, shift_guess, update_terminal, output_text, update_status_callback)
     else:
         output_text.insert("1.0", "Operation not supported.")
 
 
-def print_to_gui_terminal(message):
+def update_terminal(message):
     cipher_info_text.insert(tk.END, message + "\n")
     cipher_info_text.see(tk.END)
 
@@ -439,4 +435,7 @@ def select_cipher(cipher_name):
 
 select_cipher("Caesar")  # Example: Select 'Caesar' cipher by default
 
-root.mainloop()
+# With this:
+if __name__ == "__main__":
+    root.mainloop()
+

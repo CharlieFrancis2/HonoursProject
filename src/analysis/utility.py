@@ -40,17 +40,15 @@ def write_to_file(file_path, text):
 
 def prepare_text(text):
     """
-    Prepares text by replacing special characters, removing punctuation, and converting to uppercase.
+    Prepares text by replacing special characters, removing punctuation and whitespace,
+    and converting to uppercase.
 
     Args:
         text (str): The input text to be processed.
 
     Returns:
-        str: The processed text with special characters replaced, punctuation removed, and converted to uppercase.
-
-    This function first replaces special characters like smart quotes with their ASCII equivalents.
-    Then, it removes all punctuation characters using a translation table created with str.maketrans.
-    Finally, it converts all characters in the text to uppercase.
+        str: The processed text with special characters replaced,
+             punctuation and whitespace removed, and converted to uppercase.
     """
     # Define a translation table to replace smart quotes and other special characters.
     special_chars = {
@@ -60,10 +58,15 @@ def prepare_text(text):
         ord('…'): '...',  # Ellipsis
     }
     text = text.translate(special_chars)
+
+    # Remove punctuation
     text = text.translate(str.maketrans('', '', string.punctuation))
+
+    # Remove whitespace
+    text = text.translate(str.maketrans('', '', string.whitespace))
+
     text = text.upper()
     return text
-
 
 def add_padding(text, block_size):
     # Add padding if necessary

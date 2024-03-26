@@ -1,16 +1,23 @@
-import time
-from ciphers.vigenere import decode as vigenere_decode,  cryptanalyse as vigenere_cryptanalyse, encode as v_encode
-from analysis import utility as u
-import tkinter as tk
+import ciphers.hill as hill
 
-# Assume 'cipher_text' contains the encrypted text of "The Hobbit"
-plain = u.read_from_file('texts/hobbit.txt')
-# plain = "Hello my name is charlie"
+key = hill.generate_key(5)
+print("Key: ")
+print(key)
 
-cipher = v_encode(plain, 'jfdnvfvdsbvrhfjhsvburewvboehvbeuwrvbvbasjdvbokjscbvkjrabvuievvfklbeqfvjnefohvbeorihvbajfb')
+plaintext = "helloworld"
+print("Plaintext: ")
+print(plaintext)
+
+ciphertext = hill.encode(plaintext, key)
+print("Ciphertext: ")
+print(ciphertext)
+
+decoded_text = hill.decode(ciphertext, key)
+print("Decoded Plaintext")
+print(decoded_text)
 
 
-vigenere_cryptanalyse(cipher, 100, )
+
 
 
 
