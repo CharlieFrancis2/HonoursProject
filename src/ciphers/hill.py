@@ -26,11 +26,14 @@ def is_invertible(matrix):
 
 
 def generate_key(n):
+    """
+    Generates a random n x n matrix for Hill cipher and returns it as a formatted string.
+    """
     while True:
-        # Generate a random matrix with values in range 0-25
         matrix = randint(0, 26, (n, n))
         if is_invertible(matrix):
-            return matrix
+            # Convert the matrix to a single string with values separated by spaces
+            return ' '.join(map(str, matrix.flatten()))
 
 
 def reshape_or_adjust_matrix(vector, blocksize):
@@ -45,7 +48,7 @@ def solve_linear_equation(A, B):
     return np.dot(A_inv, B)
 
 
-def encode(text, key_matrix):
+def encode(text, key_matrix, terminal_callbacl):
     """Encode text using the Hill cipher with a given key matrix."""
     text = prepare_text(text)
     text = add_padding(text, key_matrix.shape[1])
@@ -54,7 +57,7 @@ def encode(text, key_matrix):
     return vector_to_text(encoded_vector)  # Make sure to return the encoded_text
 
 
-def decode(text, key_matrix):
+def decode(text, key_matrix, terminal_callback):
     # print(text)
     # print(key_matrix)
     # Note: No padding should be added here, since ciphertext is expected to match block size
