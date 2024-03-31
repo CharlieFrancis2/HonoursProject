@@ -37,9 +37,10 @@ def generate_key(n):
 
 
 def reshape_or_adjust_matrix(vector, blocksize):
-    # Assuming vector length is at least blocksize^2
+    # Ensure the vector is a NumPy array before reshaping
     matrix_size = blocksize ** 2
-    return vector[:matrix_size].reshape((blocksize, blocksize))
+    np_vector = np.array(vector[:matrix_size])
+    return np_vector.reshape((blocksize, blocksize))
 
 
 def solve_linear_equation(A, B):
@@ -76,7 +77,8 @@ def decode(text, key_matrix, terminal_callback):
     return remove_padding(decoded_text)  # Adjust based on your padding strategy
 
 
-def cryptanalyse(known_plaintext, ciphertext, blocksize):
+def cryptanalyse(known_plaintext, ciphertext, blocksize, output_callback, terminal_callback):
+    known_plaintext = prepare_text(known_plaintext)
     plaintext_vector = text_to_vector(known_plaintext)
     ciphertext_vector = text_to_vector(ciphertext)
 
@@ -87,11 +89,16 @@ def cryptanalyse(known_plaintext, ciphertext, blocksize):
             B = reshape_or_adjust_matrix(current_ciphertext_segment, blocksize)
             try:
                 key_matrix = solve_linear_equation(A, B)
+                # Using output_callback to return key_matrix and its position
+                output_callback(f"Key matrix found: {key_matrix} at position {i}")
                 return key_matrix, i
             except Exception as e:
-                # If solving fails (e.g., A is not invertible), continue
+                # Using terminal_callback for error handling or status updates
+                terminal_callback(f"Error solving linear equation: {e}")
                 continue
 
+    # Using output_callback to notify that no solution was found
+    output_callback("No solution found.")
     return None, None
 
 

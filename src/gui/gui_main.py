@@ -104,6 +104,9 @@ def update_output_text(result):
 def perform_operation():
     text = input_text.get("1.0", "end-1c").strip()  # Adjust widget variable name as necessary
     key_str = key_entry.get()
+    matrix_size = matrix_size_entry.get()
+    known = known_plaintext_entry.get("1.0", "end-1c").strip()
+
     cipher = cipher_choice.get()
     operation = operation_var.get()
     output_text.delete("1.0", "end")
@@ -152,6 +155,9 @@ def perform_operation():
         shift_guess = int(shift_guesses_entry.get())
         start_operation_in_thread(operations[cipher][2], update_output_text, text, max_key_length, key_guess,
                                   shift_guess, update_terminal, output_text, update_status_callback)
+    elif operation == 'Cryptanalyse' and cipher == 'Hill':
+        start_operation_in_thread(operations[cipher][2], update_output_text, known, text, int(matrix_size),
+                                  output_text, update_terminal)
     else:
         output_text.insert("1.0", "Operation not supported.")
 
@@ -276,7 +282,7 @@ key_entry.pack(padx=5, pady=5, fill=tk.X)
 # Cipher-specific options - initially hidden
 # Define label for key format example, will be updated based on the selected cipher
 key_format_label = tk.Label(options_frame, text="Example: 3 (Shift amount)", **label_style)
-key_format_label.pack(anchor=tk.W, pady=(5, 0))
+key_format_label.pack(anchor=tk.W, pady=(0, 0))
 key_format_label.config(font=label_font)
 # key_format_label.pack_forget()  # Initially hide the label
 
@@ -320,6 +326,15 @@ matrix_size_entry.pack(padx=5, pady=(0,5), fill=tk.X)
 matrix_size_label.pack_forget()  # Initially hide
 matrix_size_entry.pack_forget()  # Initially hide
 
+# Known plaintext entry for Hill cipher - initially hidden
+known_plaintext_label = tk.Label(options_frame, text="Known Plaintext (Hill):", **label_style)
+known_plaintext_entry = tk.Text(options_frame, height=4, width=20, **entry_style)  # Adjust size as needed
+
+# Place these widgets in the GUI but keep them hidden initially
+known_plaintext_label.pack(anchor=tk.W, pady=(5,0))
+known_plaintext_entry.pack(padx=5, pady=(0,5), fill=tk.BOTH, expand=True)
+known_plaintext_label.pack_forget()  # Initially hide
+known_plaintext_entry.pack_forget()  # Initially hide
 
 def hill_key_generated(n):
     """
@@ -440,17 +455,32 @@ def select_cipher(cipher_name):
 
     # Logic for showing/hiding Vigenere max key length entry
     if cipher_name == "Vigenere":
+        generate_hill_button.pack_forget()
+        matrix_size_entry.pack_forget()
+        matrix_size_label.pack_forget()
+        known_plaintext_label.pack_forget()
+        known_plaintext_entry.pack_forget()
+
         max_key_length_label.pack(anchor=tk.W)
         max_key_length_entry.pack(padx=5, pady=5, fill=tk.X)
         key_length_guesses_label.pack(anchor=tk.W)
         key_length_guesses_entry.pack(padx=5, pady=5, fill=tk.X)
         shift_guesses_label.pack(anchor=tk.W)
         shift_guesses_entry.pack(padx=5, pady=5, fill=tk.X)
-    if cipher_name == "Hill":
+    elif cipher_name == "Hill":
         # Show widgets for Hill cipher
+        max_key_length_label.pack_forget()
+        max_key_length_entry.pack_forget()
+        key_length_guesses_label.pack_forget()
+        key_length_guesses_entry.pack_forget()
+        shift_guesses_label.pack_forget()
+        shift_guesses_entry.pack_forget()
+
         matrix_size_label.pack(anchor=tk.W, pady=(5, 0))
         matrix_size_entry.pack(padx=5, pady=(0, 5), fill=tk.X)
         generate_hill_button.pack(padx=5, pady=(5, 5), fill=tk.X)
+        known_plaintext_label.pack(anchor=tk.W, pady=(5, 0))
+        known_plaintext_entry.pack(padx=5, pady=(0, 5), fill=tk.BOTH, expand=True)
     else:
         max_key_length_label.pack_forget()
         max_key_length_entry.pack_forget()
@@ -461,6 +491,8 @@ def select_cipher(cipher_name):
         generate_hill_button.pack_forget()
         matrix_size_entry.pack_forget()
         matrix_size_label.pack_forget()
+        known_plaintext_label.pack_forget()
+        known_plaintext_entry.pack_forget()
 
     # Define a color for the pressed button
     pressed_button_color = '#0a4f67'
