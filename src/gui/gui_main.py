@@ -1,10 +1,9 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
-import numpy as np
 import threading
 
 # Import cipher functions and analysis utilities
-from analysis.utility import gcd
+import analysis.utility as util
 from analysis.frequency_data import letter_frequencies as exp_letter, bigram_frequencies as exp_bi, \
     trigram_frequencies as exp_tri
 from ciphers.caesar import encode as encode_caesar, decode as decode_caesar, chi_cryptanalysis as cryptanalyse_caesar
@@ -15,10 +14,11 @@ from ciphers.vigenere import encode as encode_vigenere, decode as decode_vigener
 
 # TODO:
 #   Implement Vigenere AutoKey
-#   Implement Hill Cryptanalysis
+#   Fix Hill Cryptanalysis
 #   Implement Enigma encoding/decoding
 #   Fix Text Wrapping on descriptions
 #   Fix button hover consistency
+#   Final Polish on Spacings ect.
 
 
 def upload_file():
@@ -29,40 +29,6 @@ def upload_file():
             text = file.read()
             input_text.delete("1.0", tk.END)
             input_text.insert(tk.END, text)
-
-
-def validate_and_convert_hill_key(key_str):
-    """
-    Validates and converts a Hill cipher key string into a matrix.
-
-    Args:
-        key_str (str): The key as a string, which can be numeric with spaces, purely numeric, or alphabetic.
-
-    Returns:
-        tuple: (bool, np.array or None) Indicates whether the key is valid and the key matrix or None if invalid.
-    """
-    # Numeric key with spaces, numeric keys without spaces, or alphabetic keys are handled differently
-    if " " in key_str:
-        key = [int(num) for num in key_str.split()]
-    elif all(char.isdigit() for char in key_str):
-        key = [int(char) for char in key_str]
-    elif all(char.isalpha() for char in key_str):
-        key = [ord(char.upper()) - ord('A') for char in key_str]
-    else:
-        return False, None  # Invalid key format
-
-    # Check if key length forms a perfect square matrix
-    n = int(np.sqrt(len(key)))
-    if n ** 2 != len(key):
-        return False, None
-
-    # Create key matrix and validate its determinant
-    key_matrix = np.array(key).reshape(n, n)
-    determinant = int(round(np.linalg.det(key_matrix))) % 26
-    if determinant == 0 or gcd(determinant, 26) != 1:
-        return False, None
-
-    return True, key_matrix
 
 
 def start_operation_in_thread(operation, callback, *args):
@@ -125,7 +91,7 @@ def perform_operation():
                 return
             key = key_str
         elif cipher == 'Hill':
-            valid, key_matrix = validate_and_convert_hill_key(key_str)
+            valid, key_matrix = util.validate_and_convert_hill_key(key_str)
             if not valid:
                 output_text.insert("1.0", "Invalid key for Hill cipher: must be a valid matrix format")
                 return

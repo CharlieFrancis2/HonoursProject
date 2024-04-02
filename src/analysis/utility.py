@@ -1,5 +1,40 @@
 import os
 import string
+import numpy as np
+from math import gcd, sqrt
+
+
+def matrix_effectively_equal(matrix_a, matrix_b, modulus=26):
+    """
+    Checks if two matrices are effectively equal, meaning they have the same effect on a range of vectors.
+    This is a conceptual function and needs adjustment based on the actual implementation details.
+    """
+    sample_vector = np.array([1, 2])  # Example vector, adjust based on matrix size
+    transformed_a = np.dot(matrix_a, sample_vector) % modulus
+    transformed_b = np.dot(matrix_b, sample_vector) % modulus
+    return np.array_equal(transformed_a, transformed_b)
+
+
+def validate_and_convert_hill_key(key):
+    # Check if the key is already a NumPy array
+    if isinstance(key, np.ndarray):
+        key_matrix = key
+    # If the key is a string, convert it to a NumPy array
+    elif isinstance(key, str):
+        key_list = [int(k) for k in key.split()]
+        n = int(np.sqrt(len(key_list)))
+        if n ** 2 != len(key_list):
+            return False, None
+        key_matrix = np.array(key_list).reshape(n, n)
+    else:
+        return False, None
+
+    # Validate the determinant of the matrix
+    determinant = int(np.round(np.linalg.det(key_matrix))) % 26
+    if determinant == 0 or gcd(determinant, 26) != 1:
+        return False, None
+
+    return True, key_matrix
 
 
 def read_from_file(file_path):

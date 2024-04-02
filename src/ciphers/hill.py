@@ -6,18 +6,22 @@ from analysis.utility import mod_inverse, prepare_text, add_padding, remove_padd
 
 
 def matrix_mod_inv(matrix, modulus):
+    """Returns the modular inverse of a matrix modulo the given modulus if it exists."""
     sympy_matrix = Matrix(matrix)
-    return sympy_matrix.inv_mod(modulus).tolist()
+    try:
+        inv_mod_matrix = sympy_matrix.inv_mod(modulus)
+        return np.array(inv_mod_matrix).astype(int)
+    except ValueError as e:
+        print(f"Matrix inversion error: {e}")
+        return None
 
 
 def text_to_vector(text):
-    """Convert text to numerical vector based on alphabetical position."""
-    return [ord(char) - ord('A') for char in text]  # Example for uppercase letters
+    return [ord(char) - ord('A') for char in text]
 
 
 def vector_to_text(vector):
-    """Convert numerical vector back to text based on alphabetical position."""
-    return ''.join(chr(num + ord('A')) for num in vector)  # Example for uppercase letters
+    return ''.join(chr(num + ord('A')) for num in vector)
 
 
 def is_invertible(matrix):
@@ -26,20 +30,24 @@ def is_invertible(matrix):
 
 
 def generate_key(n):
-    """
-    Generates a random n x n matrix for Hill cipher and returns it as a formatted string.
-    """
     while True:
         matrix = randint(0, 26, (n, n))
         if is_invertible(matrix):
-            # Convert the matrix to a single string with values separated by spaces
-            return ' '.join(map(str, matrix.flatten()))
+            return matrix
 
 
 def reshape_or_adjust_matrix(vector, blocksize):
     # Ensure the vector is a NumPy array before reshaping
+    # print("Vector: " + str(vector))
+    # print("Blocksize: " + str(blocksize))
+
     matrix_size = blocksize ** 2
-    np_vector = np.array(vector[:matrix_size])
+    # print("Matrix Size: " + str(matrix_size))
+
+    new_vector = vector[:matrix_size]
+    # print("New Vector: " + str(new_vector))
+
+    np_vector = np.array(new_vector)
     return np_vector.reshape((blocksize, blocksize))
 
 
@@ -55,6 +63,8 @@ def encode(text, key_matrix, terminal_callbacl):
     text = add_padding(text, key_matrix.shape[1])
     text_vector = np.array(text_to_vector(text))
     encoded_vector = np.dot(key_matrix, text_vector.reshape(-1, key_matrix.shape[0]).T).T.flatten() % 26
+    # print(f"Prepared and padded text for encoding: {text}")
+    # print(f"Encoded vector: {encoded_vector}")
     return vector_to_text(encoded_vector)  # Make sure to return the encoded_text
 
 
@@ -66,39 +76,72 @@ def decode(text, key_matrix, terminal_callback):
 
     key_inv_matrix = matrix_mod_inv(key_matrix, 26)
 
+    if key_inv_matrix is None:
+        print("Error: Key matrix inversion failed. Decryption cannot proceed.")
+        return None  # Or handle the error as appropriate for your application
+
     # print(f"Processed text: {text}")
     text_vector = np.array(text_to_vector(text))
     # print(f"Text vector length: {len(text_vector)}")
 
+    # print(f"Text vector length before reshaping: {len(text_vector)}")
+    # print(f"Expected reshaping dimensions: (-1, {key_matrix.shape[0]})")
+
     decoded_vector = np.dot(key_inv_matrix, text_vector.reshape(-1, key_matrix.shape[0]).T).T.flatten() % 26
     decoded_text = vector_to_text(decoded_vector)
+
+    # print(f"Key inverse matrix for decoding: {key_inv_matrix}")
+    # print(f"Decoded vector: {decoded_vector}")
 
     # Consider smarter padding removal if needed
     return remove_padding(decoded_text)  # Adjust based on your padding strategy
 
 
 def cryptanalyse(known_plaintext, ciphertext, blocksize, output_callback, terminal_callback):
-    known_plaintext = prepare_text(known_plaintext)
-    plaintext_vector = text_to_vector(known_plaintext)
-    ciphertext_vector = text_to_vector(ciphertext)
 
-    for i in range(len(ciphertext_vector) - blocksize + 1):
-        current_ciphertext_segment = ciphertext_vector[i: i + blocksize]
-        if len(plaintext_vector) >= blocksize:
-            A = reshape_or_adjust_matrix(plaintext_vector, blocksize)
-            B = reshape_or_adjust_matrix(current_ciphertext_segment, blocksize)
-            try:
-                key_matrix = solve_linear_equation(A, B)
-                # Using output_callback to return key_matrix and its position
-                output_callback(f"Key matrix found: {key_matrix} at position {i}")
-                return key_matrix, i
-            except Exception as e:
-                # Using terminal_callback for error handling or status updates
-                terminal_callback(f"Error solving linear equation: {e}")
+    if not known_plaintext or not ciphertext:
+        terminal_callback("Invalid input provided.")
+        return []
+
+    # Initialize a list to hold all valid key matrices
+    valid_keys = []
+
+    # Convert plaintext and ciphertext to vectors
+    P_full_vector = text_to_vector(known_plaintext)
+    C_full_vector = text_to_vector(ciphertext)
+
+    # Attempt to derive a key for each possible segment of the given size
+    for start in range(len(P_full_vector) - blocksize ** 2 + 1):
+        P_vector = P_full_vector[start:start + blocksize ** 2]
+        C_vector = C_full_vector[start:start + blocksize ** 2]
+
+        P = Matrix(P_vector).reshape(blocksize, blocksize)
+        C = Matrix(C_vector).reshape(blocksize, blocksize)
+
+        try:
+            # Check if P is invertible in mod 26
+            if P.det() % 26 == 0 or gcd(int(P.det()), 26) != 1:
                 continue
 
-    # Using output_callback to notify that no solution was found
-    output_callback("No solution found.")
-    return None, None
+            P_inv_mod_26 = P.inv_mod(26)
 
+            # Calculating the potential key matrix
+            K = P_inv_mod_26 * C % 26
 
+            # Check if the derived matrix K is valid
+            if gcd(int(K.det()), 26) == 1:
+                # Add the valid key to the list
+                valid_keys.append((K.tolist(), start))
+
+        except Exception as e:
+            terminal_callback(f"Error encountered at start {start}: {e}")
+            continue
+
+    if not valid_keys:
+        output_callback("No valid key matrices found.")
+        return []
+
+    # for key, position in valid_keys:
+    #     output_callback(f"Valid key matrix found at position {position}: {key}")
+
+    return valid_keys
