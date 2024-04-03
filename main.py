@@ -49,10 +49,13 @@ def perform_cryptanalysis(known_text, cipher_text, key_size, original_key_matrix
     found_keys = []
 
     for key_matrix, position in valid_keys:
-        # Retranspose the found key matrix based on its start position and block size
+        # Re-transpose the found key matrix based on its start position and block size
         retransposed_key_matrix = retranspose_key(np.array(key_matrix), position, key_size)
 
-        # Convert the retransposed key matrix to a string for comparison
+        #  TODO: Switch comparison to comparing decoded ciphertext to known plaintext
+        #   -------------------------------------------------------------------------
+        #
+        # Convert the re-transposed key matrix to a string for comparison
         retransposed_key_string = matrix_to_string(retransposed_key_matrix)
 
         if retransposed_key_string == original_key_string:
@@ -70,8 +73,8 @@ def main():
 
     # Generate and validate key
     key = hill.generate_key(key_size)
-    Terminal.debug("Generated Key: " + str(key))
     valid, key_matrix = util.validate_and_convert_hill_key(key)
+    Terminal.debug("Generated Key: " + str(key_matrix))
     if not valid:
         Terminal.output("Key validation failed.")
         return
