@@ -81,6 +81,8 @@ def decode(text, key_matrix, terminal_callback):
         return None  # Or handle the error as appropriate for your application
 
     # print(f"Processed text: {text}")
+    text = prepare_text(text)
+    text = add_padding(text, key_matrix.shape[1])
     text_vector = np.array(text_to_vector(text))
     # print(f"Text vector length: {len(text_vector)}")
 

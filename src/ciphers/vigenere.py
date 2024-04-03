@@ -150,7 +150,7 @@ def cryptanalyse(cipher_text, max_key_length, key_guess, shift_guess, update_ter
         for stream_index, stream in enumerate(matrix):
             shift_scores = []
             for shift in range(26):
-                decrypted_stream = c_decode(stream, shift, update_terminal_callback, False)
+                decrypted_stream = c_decode(stream, shift, update_terminal_callback)
                 letter_frequencies = util.generate_frequency_data(decrypted_stream)
                 chi_squared = util.compute_chi_squared(letter_frequencies[0], exp_letter, len(decrypted_stream))
                 shift_scores.append((shift, chi_squared))
