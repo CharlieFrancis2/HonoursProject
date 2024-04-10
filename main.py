@@ -1,7 +1,6 @@
 import ciphers.hill as hill
 import analysis.utility as util
 import numpy as np
-from itertools import permutations
 
 
 class Terminal:
@@ -22,107 +21,74 @@ def read_and_prepare_text(file_path):
         return None
 
 
-def keys_are_equal(key_matrix_1, key_matrix_2):
-    return np.array_equal(key_matrix_1, key_matrix_2)
-
-
 def matrix_to_string(matrix):
     """Convert a NumPy matrix to a string with spaces separating the elements."""
     return ' '.join(map(str, matrix.flatten()))
 
 
-def retranspose_key(key_matrix, position, block_size):
-    """Re-transpose the key matrix based on its start position and block size."""
-    # This is a placeholder function. You'll need to implement the logic
-    # that correctly retransposes the key based on your specific requirements.
-    # The following line is just a placeholder and likely doesn't reflect the
-    # actual logic you need.
-    return np.transpose(key_matrix)  # Adjust this to match your transposition logic
-    # return key_matrix
+def extract_and_trim(plaintext, start_index, desired_length, key_size):
+    """Extract and trim the plaintext to ensure it contains only full blocks for the matrix."""
+    block_size = key_size ** 2
+    end_index = start_index + desired_length
+    if end_index > len(plaintext):
+        end_index = len(plaintext)
+
+    trimmed_text = plaintext[start_index:end_index]
+    # Ensure that the trimmed text contains only complete blocks
+    complete_blocks = len(trimmed_text) // block_size * block_size
+    return trimmed_text[:complete_blocks]
 
 
-def brute_force_key(original_key_components, ciphertext, known_text, term):
-    # Generate all permutations of the key components
-    all_permutations = list(permutations(original_key_components))
+def perform_cryptanalysis(known_text, cipher_text, key_size, start_index, Terminal):
+    if len(known_text) < key_size**2:
+        Terminal.output("Insufficient known plaintext length for analysis.")
+        return
 
-    for perm in all_permutations:
-        # Reconstruct the key matrix from the current permutation
-        key_matrix = np.array(perm).reshape(2, 2)
+    # Ensure the entire segment for analysis does not exceed the ciphertext length
+    if start_index + len(known_text) > len(cipher_text):
+        Terminal.output("Known text alignment exceeds cipher text length.")
+        return
 
-        # Attempt to decode the ciphertext with the current key matrix
-        decoded_text = hill.decode(ciphertext, key_matrix, Terminal)
+    # Extract the corresponding ciphertext segment
+    cipher_segment = cipher_text[start_index:start_index + len(known_text)]
 
-        # Check if the known plaintext is in the decoded text
-        if known_text in decoded_text:
-            print(f"Success! Found key: {key_matrix}")
-            return key_matrix
+    # Performing cryptanalysis
+    Terminal.output("Starting cryptanalysis...")
+    valid_keys = hill.cryptanalyse(known_text, cipher_segment, key_size, Terminal.output, Terminal.debug)
 
-    print("Failed to find the correct key.")
-    return None
-
-
-# Updated perform_cryptanalysis function to include the new logic
-def perform_cryptanalysis(known_text, cipher_text, key_size, original_key_matrix, Terminal):
-    valid_keys = hill.cryptanalyse(known_text, cipher_text, key_size, Terminal.output, Terminal.debug)
-
-    # Store found keys with their positions to avoid duplicates
-    found_keys = {}
-
-    for key_matrix, position in valid_keys:
-        # Re-transpose the found key matrix based on its start position and block size
-        retransposed_key_matrix = retranspose_key(np.array(key_matrix), position, key_size)
-
-        # Decode with the found key
-        test = hill.decode(cipher_text, retransposed_key_matrix, Terminal)
-
-        # Use find() method to check if known_text is in test and get its starting position
-        found_index = test.find(known_text)
-        if found_index != -1:
-            retransposed_key_string = matrix_to_string(retransposed_key_matrix)
-            # If the key hasn't been found before, add it to the dictionary
-            if retransposed_key_string not in found_keys:
-                Terminal.output(
-                    f"Found matching key with known text starting at index {found_index} in decoded text. Key: {retransposed_key_matrix}")
-                found_keys[retransposed_key_string] = position
-        else:
-            retransposed_key_string = matrix_to_string(retransposed_key_matrix)
-            Terminal.output(f"Key at position {position} does not match the original. Key: {retransposed_key_string}")
-
-    # Print all unique found keys and their positions
-    if found_keys:
-        for key_string, position in found_keys.items():
-            print(f"Found matching key at position {position}. Key: {key_string}")
+    # Output results
+    if valid_keys:
+        for key_matrix in valid_keys:
+            key_string = matrix_to_string(np.array(key_matrix))
+            Terminal.output(f"Found matching key: {key_string}")
     else:
-        print("No Matching key found")
+        Terminal.output("No valid keys found.")
 
 
 def main():
-    key_size = 2
-
-    # Generate and validate key
-    key = hill.generate_key(key_size)
-    valid, key_matrix = util.validate_and_convert_hill_key(key)
-    Terminal.debug("Generated Key: " + str(key_matrix))
-    if not valid:
-        Terminal.output("Key validation failed.")
-        return
+    key_size = 2  # Size of the key matrix (e.g., 2x2)
+    start_index = 0  # Example start index in the ciphertext
 
     # Read and prepare plaintext
     plaintext = read_and_prepare_text("texts/hobbit.txt")
     if plaintext is None:
         Terminal.output("Failed to read or prepare plaintext.")
         return
-    #
-    # plaintext = "In a hole in the ground there lived a hobbit. Not a nasty,dirty, wet hole, filled with the ends of worms and an oozysmell, nor yet a dry, bare, sandy hole with nothing in it tosit down on or to eat: it was a hobbit-hole, and that means comfort."
-    # plaintext = util.prepare_text(plaintext)
 
-    # Encryption
+    # Extract and trim the known plaintext
+    known_plaintext = extract_and_trim(plaintext, start_index, 300, key_size)
+    if not known_plaintext:
+        Terminal.output("Failed to extract sufficient plaintext for encryption.")
+        return
+
+    # Generate and validate a key, then encrypt the plaintext
+    key_matrix = hill.generate_key(key_size)
+    Terminal.output("Key Matrix: " + str(key_matrix))
     ciphertext = hill.encode(plaintext, key_matrix, Terminal.debug)
-    Terminal.output("Ciphertext: " + ciphertext[:20])
+    Terminal.debug("Ciphertext generated.")
 
-    # Cryptanalysis
-    Terminal.output("Starting Cryptanalysis...")
-    perform_cryptanalysis(plaintext[1:], ciphertext, key_size, key_matrix, Terminal)
+    # Perform cryptanalysis
+    perform_cryptanalysis(known_plaintext, ciphertext, key_size, start_index, Terminal)
 
 
 if __name__ == "__main__":

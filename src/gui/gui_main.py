@@ -201,6 +201,9 @@ label_style = {
 entry_style = {
     'font': font_style, 'bg': input_bg, 'fg': foreground_color, 'insertbackground': foreground_color
 }
+entry_style2 = {
+    'font': mono_font_style, 'bg': input_bg, 'fg': foreground_color, 'insertbackground': foreground_color
+}
 text_style = {
     'font': font_style, 'bg': text_widget_bg, 'fg': foreground_color
 }
@@ -322,7 +325,7 @@ status_label = tk.Label(cipher_info_frame, text="Status updates appear here", **
 status_label.pack(padx=5, pady=0)
 
 # Main cipher information text box with scrollbar
-cipher_info_text = tk.Text(cipher_info_frame, height=33, width=50, **entry_style)
+cipher_info_text = tk.Text(cipher_info_frame, height=33, width=50, **entry_style2)
 scroll_bar = tk.Scrollbar(cipher_info_frame, command=cipher_info_text.yview)
 cipher_info_text.config(yscrollcommand=scroll_bar.set)
 scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)

@@ -100,50 +100,47 @@ def decode(text, key_matrix, terminal_callback):
 
 
 def cryptanalyse(known_plaintext, ciphertext, blocksize, output_callback, terminal_callback):
-
     if not known_plaintext or not ciphertext:
         terminal_callback("Invalid input provided.")
         return []
 
-    # Initialize a list to hold all valid key matrices
     valid_keys = []
+    seen_hashes = set()  # To track hashes of matrices to prevent duplicates
 
-    # Convert plaintext and ciphertext to vectors
     P_full_vector = text_to_vector(known_plaintext)
     C_full_vector = text_to_vector(ciphertext)
 
-    # Attempt to derive a key for each possible segment of the given size
-    for start in range(len(P_full_vector) - blocksize ** 2 + 1):
-        P_vector = P_full_vector[start:start + blocksize ** 2]
-        C_vector = C_full_vector[start:start + blocksize ** 2]
+    max_length = min(len(P_full_vector), len(C_full_vector))
+    max_complete_blocks = (max_length // (blocksize**2)) * (blocksize**2)
 
-        P = Matrix(P_vector).reshape(blocksize, blocksize)
-        C = Matrix(C_vector).reshape(blocksize, blocksize)
+    P_full_vector = P_full_vector[:max_complete_blocks]
+    C_full_vector = C_full_vector[:max_complete_blocks]
 
-        try:
-            # Check if P is invertible in mod 26
-            if P.det() % 26 == 0 or gcd(int(P.det()), 26) != 1:
-                continue
+    try:
+        # Create matrices for every blocksize^2 elements
+        num_matrices = len(P_full_vector) // (blocksize**2)
+        for i in range(num_matrices):
+            P_matrix = Matrix(P_full_vector[i * blocksize**2:(i + 1) * blocksize**2]).reshape(blocksize, blocksize)
+            C_matrix = Matrix(C_full_vector[i * blocksize**2:(i + 1) * blocksize**2]).reshape(blocksize, blocksize)
 
-            P_inv_mod_26 = P.inv_mod(26)
+            if P_matrix.det() % 26 == 0 or gcd(int(P_matrix.det()), 26) != 1:
+                continue  # Skip non-invertible matrices
 
-            # Calculating the potential key matrix
-            K = P_inv_mod_26 * C % 26
+            P_inv_mod_26 = P_matrix.inv_mod(26)
+            K_matrix = (P_inv_mod_26 * C_matrix % 26).tolist()
 
-            # Check if the derived matrix K is valid
-            if gcd(int(K.det()), 26) == 1:
-                # Add the valid key to the list
-                valid_keys.append((K.tolist(), start))
+            # Use a hashable representation of the matrix for deduplication
+            matrix_hash = tuple(tuple(row) for row in K_matrix)  # Convert matrix to tuple of tuples
+            if matrix_hash not in seen_hashes:
+                seen_hashes.add(matrix_hash)
+                valid_keys.append(K_matrix)
+                output_callback(f"Found unique key matrix: {K_matrix}")
 
-        except Exception as e:
-            terminal_callback(f"Error encountered at start {start}: {e}")
-            continue
+    except Exception as e:
+        terminal_callback(f"Error encountered: {e}")
 
     if not valid_keys:
         output_callback("No valid key matrices found.")
         return []
-
-    # for key, position in valid_keys:
-    #     output_callback(f"Valid key matrix found at position {position}: {key}")
 
     return valid_keys
