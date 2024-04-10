@@ -117,7 +117,6 @@ def cryptanalyse(known_plaintext, ciphertext, blocksize, output_callback, termin
     C_full_vector = C_full_vector[:max_complete_blocks]
 
     try:
-        # Create matrices for every blocksize^2 elements
         num_matrices = len(P_full_vector) // (blocksize**2)
         for i in range(num_matrices):
             P_matrix = Matrix(P_full_vector[i * blocksize**2:(i + 1) * blocksize**2]).reshape(blocksize, blocksize)
@@ -127,14 +126,14 @@ def cryptanalyse(known_plaintext, ciphertext, blocksize, output_callback, termin
                 continue  # Skip non-invertible matrices
 
             P_inv_mod_26 = P_matrix.inv_mod(26)
-            K_matrix = (P_inv_mod_26 * C_matrix % 26).tolist()
+            K_matrix = (P_inv_mod_26 * C_matrix % 26).T  # Transposing the key matrix
 
-            # Use a hashable representation of the matrix for deduplication
-            matrix_hash = tuple(tuple(row) for row in K_matrix)  # Convert matrix to tuple of tuples
+            # Convert matrix to a hashable tuple format for deduplication
+            matrix_hash = tuple(tuple(row) for row in K_matrix.tolist())
             if matrix_hash not in seen_hashes:
                 seen_hashes.add(matrix_hash)
-                valid_keys.append(K_matrix)
-                output_callback(f"Found unique key matrix: {K_matrix}")
+                valid_keys.append(K_matrix.tolist())
+                output_callback(f"Found unique key matrix: {K_matrix.tolist()}")
 
     except Exception as e:
         terminal_callback(f"Error encountered: {e}")
