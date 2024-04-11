@@ -2,6 +2,9 @@ import tkinter as tk
 
 from tabulate import tabulate
 
+from functools import reduce
+import operator
+
 from analysis import utility as util
 from analysis.frequency_data import (
     letter_frequencies as exp_letter,
@@ -106,40 +109,51 @@ def cryptanalyse(cipher_text, max_key_length, key_guess, shift_guess, update_ter
 
     def generate_all_possible_keys(all_stream_shifts, all_possible_keys, update_terminal_callback,
                                    update_status_callback):
-        """
-        Generate all possible keys from the top shift guesses for each stream.
-
-        Modifies the all_possible_keys list in place by appending new keys.
-        """
         update_terminal_callback("Generating Keyset...")
         alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-
+        # Generate all combinations of shifts
         shift_combinations = [list(map(lambda x: x[0], stream_shifts)) for stream_shifts in all_stream_shifts]
-        total_combinations = 1
-        for shifts in shift_combinations:
-            total_combinations *= len(shifts)
+        total_combinations = reduce(operator.mul, [len(shifts) for shifts in shift_combinations], 1)
+
+        update_status_callback(f"Total Combinations: {total_combinations}")
 
         count = 0
         for combination in itertools.product(*shift_combinations):
-            update_status_callback(f"Generating: {count} keys out of: {total_combinations}")
-
-            key = ''.join([alphabet[shift] for shift in combination])
+            key = ''.join(alphabet[shift] for shift in combination)
             all_possible_keys.append(key)
             count += 1
+            if count % 1000 == 0:  # Update status for every 1000 keys generated
+                update_status_callback(f"Generated {count} of {total_combinations} keys")
 
-        update_terminal_callback("Done! Generated " + str(len(all_possible_keys)) + " keys!")
+        update_terminal_callback(f"Done! Generated {len(all_possible_keys)} keys!")
 
     # Estimate Key Length
+    # TODO: PRBOLEM
+    # update_terminal_callback("Estimating Key Length...")
+    # data = [[i, 0] for i in range(1, max_key_length + 1)]
+    # for key_length in range(1, max_key_length + 1):
+    #     matrix = create_matrix(key_length, cipher_text)
+    #     ic_values = [calculate_ic(column) for column in matrix]
+    #     average_ic = sum(ic_values) / len(ic_values)
+    #     data[key_length - 1][1] = average_ic
+    #
+    # sorted_data = sorted(data, key=lambda row: abs(row[1] - 0.0686))[:KEY_LENGTHS_GUESSES]
+    # update_terminal_callback("Done! : " + str(sorted_data[0][0]))
     update_terminal_callback("Estimating Key Length...")
     data = [[i, 0] for i in range(1, max_key_length + 1)]
     for key_length in range(1, max_key_length + 1):
         matrix = create_matrix(key_length, cipher_text)
         ic_values = [calculate_ic(column) for column in matrix]
+        if len(ic_values) == 0:
+            print(f"No IC values for key length {key_length}")
+            continue
         average_ic = sum(ic_values) / len(ic_values)
         data[key_length - 1][1] = average_ic
+        print(f"Key Length: {key_length}, Average IC: {average_ic}")
 
     sorted_data = sorted(data, key=lambda row: abs(row[1] - 0.0686))[:KEY_LENGTHS_GUESSES]
     update_terminal_callback("Done! : " + str(sorted_data[0][0]))
+    print(sorted_data)
 
     # Perform frequency analysis for each stream
     all_possible_keys = []
@@ -158,7 +172,11 @@ def cryptanalyse(cipher_text, max_key_length, key_guess, shift_guess, update_ter
             top_shifts = sorted(shift_scores, key=lambda x: x[1])[:SHIFT_LENGTH_GUESSES]
             all_stream_shifts.append(top_shifts)
 
-    generate_all_possible_keys(all_stream_shifts, all_possible_keys, update_terminal_callback, update_status_callback)
+        print(f"Top Shifts for Key Length {key_length}:", all_stream_shifts)
+        print("Generating keys for the following shifts:", all_stream_shifts)
+        generate_all_possible_keys(all_stream_shifts, all_possible_keys, update_terminal_callback,
+                                   update_status_callback)
+        print("Generated Keys:", all_possible_keys)
 
     update_terminal_callback("Decoding with possible keys...")
     results = vigenere_chi_cryptanalysis(cipher_text, all_possible_keys, exp_letter, exp_bi, exp_tri,
