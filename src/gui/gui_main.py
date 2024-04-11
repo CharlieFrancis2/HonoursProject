@@ -66,19 +66,6 @@ def update_output_text(result):
 def perform_operation():
     text = input_text.get("1.0", "end-1c").strip()  # Get the plaintext/ciphertext from input
     key_str = key_entry.get()  # Get the key as a string from input
-    known = known_plaintext_entry.get("1.0", "end-1c").strip()  # Get the full plaintext input
-    known  = util.prepare_text(known)
-    try:
-        start_index = int(start_index_entry.get())
-        matrix_size = int(matrix_size_entry.get())
-    except ValueError:
-        output_text.insert("1.0", "Invalid start index or matrix size: must be integers")
-        return
-
-    trimmed_known_text = extract_known(known, start_index, matrix_size)
-    if not trimmed_known_text:
-        output_text.insert("1.0", "Insufficient known plaintext for analysis.")
-        return
 
     cipher = cipher_choice.get()  # Get selected cipher type
     operation = operation_var.get()  # Get selected operation type
@@ -126,8 +113,21 @@ def perform_operation():
                 additional_args = (exp_letter, exp_bi, exp_tri)
             elif cipher == 'Vigenere':
                 additional_args = (int(max_key_length_entry.get()), int(key_length_guesses_entry.get()), int(shift_guesses_entry.get()))
-            start_operation_in_thread(operations[cipher][2], update_output_text, text, *additional_args, update_terminal)
+            start_operation_in_thread(operations[cipher][2], update_output_text, text, *additional_args, update_terminal, update_output_text, update_status_callback)
         elif cipher == 'Hill':
+            known = known_plaintext_entry.get("1.0", "end-1c").strip()  # Get the full plaintext input
+            known = util.prepare_text(known)
+            try:
+                start_index = int(start_index_entry.get())
+                matrix_size = int(matrix_size_entry.get())
+            except ValueError:
+                output_text.insert("1.0", "Invalid start index or matrix size: must be integers")
+                return
+
+            trimmed_known_text = extract_known(known, start_index, matrix_size)
+            if not trimmed_known_text:
+                output_text.insert("1.0", "Insufficient known plaintext for analysis.")
+                return
             start_operation_in_thread(operations['Hill'][2], update_output_text, trimmed_known_text, text, matrix_size,
                                       start_index, update_output_text, update_terminal)
         else:

@@ -168,8 +168,7 @@ def cryptanalyse(cipher_text, max_key_length, key_guess, shift_guess, update_ter
     output_str = finalize_cryptanalysis(cipher_text, results, update_terminal_callback)
 
     # Finally, update the GUI with the overall results
-    output_text.delete("1.0", tk.END)
-    output_text.insert(tk.END, output_str)
+    return output_str
 
 
 def vigenere_chi_cryptanalysis(text, all_possible_keys, exp_letter, exp_bi, exp_tri, update_status_callback):
