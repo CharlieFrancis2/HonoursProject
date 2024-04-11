@@ -8,7 +8,7 @@ from analysis.frequency_data import letter_frequencies as exp_letter, bigram_fre
     trigram_frequencies as exp_tri
 from ciphers.caesar import encode as encode_caesar, decode as decode_caesar, chi_cryptanalysis as cryptanalyse_caesar
 from ciphers.hill import (encode as encode_hill, decode as decode_hill, cryptanalyse as cryptanalyse_hill, \
-                          generate_key as generate_hill)
+                          generate_key as generate_hill, extract_and_trim as extract_known)
 from ciphers.vigenere import encode as encode_vigenere, decode as decode_vigenere, cryptanalyse as cryptanalyse_vigenere
 
 
@@ -52,30 +52,29 @@ def start_operation_in_thread(operation, callback, *args):
 def update_output_text(result):
     """
     Callback function to update the GUI with the result of an operation.
+    Properly formats the result based on its type to display in the GUI.
     """
-    print("Updating GUI with result...")  # Diagnostic print
-
-    # Check if result is not a string and convert it accordingly
-    if not isinstance(result, str):
-        # Assuming result could be a list of tuples like cryptanalysis results,
-        # you might want to format it as a string in a readable way
-        result_str = "\n".join([str(r) for r in result])
+    if result is None:
+        result_str = "No results to display."
+    elif isinstance(result, list):
+        # Assuming the list might contain list of lists (matrix) or other elements
+        result_str = "\n".join(' '.join(map(str, row)) if isinstance(row, list) else str(row) for row in result)
     else:
-        result_str = result
+        result_str = str(result)
 
     output_text.delete("1.0", "end")
     output_text.insert("1.0", result_str)
 
 
 def perform_operation():
-    text = input_text.get("1.0", "end-1c").strip()  # Adjust widget variable name as necessary
-    key_str = key_entry.get()
-    matrix_size = matrix_size_entry.get()
-    known = known_plaintext_entry.get("1.0", "end-1c").strip()
+    text = input_text.get("1.0", "end-1c").strip()  # Get the plaintext/ciphertext from input
+    key_str = key_entry.get()  # Get the key as a string from input
+    matrix_size = matrix_size_entry.get()  # Get the matrix size for Hill cipher
+    known = known_plaintext_entry.get("1.0", "end-1c").strip()  # Get the known plaintext for cryptanalysis
 
-    cipher = cipher_choice.get()
-    operation = operation_var.get()
-    output_text.delete("1.0", "end")
+    cipher = cipher_choice.get()  # Get selected cipher type
+    operation = operation_var.get()  # Get selected operation type
+    output_text.delete("1.0", "end")  # Clear output text area before new output
 
     # Validate key and perform the selected operation
     if operation != 'Cryptanalyse':
@@ -100,32 +99,39 @@ def perform_operation():
             output_text.insert("1.0", "Cipher not supported.")
             return
 
-    # Mapping GUI choices to cipher functions and performing the operation
+    # Define operations mapping for each cipher type
     operations = {
         'Caesar': (encode_caesar, decode_caesar, cryptanalyse_caesar),
         'Vigenere': (encode_vigenere, decode_vigenere, cryptanalyse_vigenere),
         'Hill': (encode_hill, decode_hill, cryptanalyse_hill),
     }
 
-    # Correctly start the operation in a thread and handle the result via a callback
     if operation == 'Encode':
         start_operation_in_thread(operations[cipher][0], update_output_text, text, key, update_terminal)
     elif operation == 'Decode':
         start_operation_in_thread(operations[cipher][1], update_output_text, text, key, update_terminal)
-    elif operation == 'Cryptanalyse' and cipher == 'Caesar':
-        start_operation_in_thread(operations[cipher][2], update_output_text, text, exp_letter, exp_bi, exp_tri,
-                                  output_text, update_terminal)
-    elif operation == 'Cryptanalyse' and cipher == 'Vigenere':
-        max_key_length = int(max_key_length_entry.get())
-        key_guess = int(key_length_guesses_entry.get())
-        shift_guess = int(shift_guesses_entry.get())
-        start_operation_in_thread(operations[cipher][2], update_output_text, text, max_key_length, key_guess,
-                                  shift_guess, update_terminal, output_text, update_status_callback)
-    elif operation == 'Cryptanalyse' and cipher == 'Hill':
-        start_operation_in_thread(operations[cipher][2], update_output_text, known, text, int(matrix_size),
-                                  output_text, update_terminal)
-    else:
-        output_text.insert("1.0", "Operation not supported.")
+    elif operation == 'Cryptanalyse':
+        if cipher in ('Caesar', 'Vigenere'):
+            # Assuming specific args are needed as earlier
+            additional_args = ()
+            if cipher == 'Caesar':
+                additional_args = (exp_letter, exp_bi, exp_tri)
+            elif cipher == 'Vigenere':
+                additional_args = (int(max_key_length_entry.get()), int(key_length_guesses_entry.get()), int(shift_guesses_entry.get()))
+            start_operation_in_thread(operations[cipher][2], update_output_text, text, *additional_args, update_terminal)
+        elif cipher == 'Hill':
+            try:
+                start_index = int(start_index_entry.get())
+                matrix_size = int(matrix_size)
+                known = known_plaintext_entry.get("1.0", "end-1c").strip()  # Get the known plaintext for cryptanalysis
+                known = extract_known(known, start_index, 300, int(matrix_size))
+            except ValueError:
+                output_text.insert("1.0", "Invalid start index or matrix size: must be integers")
+                return
+            start_operation_in_thread(operations[cipher][2], update_output_text, known, text, matrix_size, start_index, update_output, update_terminal)
+        else:
+            output_text.insert("1.0", "Cryptanalysis not supported for this cipher.")
+
 
 
 def update_terminal(message):
@@ -290,8 +296,8 @@ generate_hill_button.pack_forget()  # Initially hide this button
 
 matrix_size_label = tk.Label(options_frame, text="Matrix Size (n):", **label_style)
 matrix_size_entry = tk.Entry(options_frame, **entry_style)
-matrix_size_label.pack(anchor=tk.W, pady=(5,0))
-matrix_size_entry.pack(padx=5, pady=(0,5), fill=tk.X)
+matrix_size_label.pack(anchor=tk.W, pady=(5, 0))
+matrix_size_entry.pack(padx=5, pady=(0, 5), fill=tk.X)
 matrix_size_label.pack_forget()  # Initially hide
 matrix_size_entry.pack_forget()  # Initially hide
 
@@ -300,10 +306,21 @@ known_plaintext_label = tk.Label(options_frame, text="Known Plaintext (Hill):", 
 known_plaintext_entry = tk.Text(options_frame, height=4, width=20, **entry_style)  # Adjust size as needed
 
 # Place these widgets in the GUI but keep them hidden initially
-known_plaintext_label.pack(anchor=tk.W, pady=(5,0))
-known_plaintext_entry.pack(padx=5, pady=(0,5), fill=tk.BOTH, expand=True)
+known_plaintext_label.pack(anchor=tk.W, pady=(5, 0))
+known_plaintext_entry.pack(padx=5, pady=(0, 5), fill=tk.BOTH, expand=True)
 known_plaintext_label.pack_forget()  # Initially hide
 known_plaintext_entry.pack_forget()  # Initially hide
+
+# Label and entry for start index (Hill cipher)
+start_index_label = tk.Label(options_frame, text="Start Index (Hill):", **label_style)
+start_index_entry = tk.Entry(options_frame, **entry_style)
+start_index_label.pack(anchor=tk.W, pady=(5, 0))
+start_index_entry.pack(padx=5, pady=(0, 5), fill=tk.X)
+start_index_label.pack_forget()  # Initially hide
+start_index_entry.pack_forget()  # Initially hide
+
+start_index = 0
+
 
 def hill_key_generated(n):
     """
@@ -415,41 +432,44 @@ def select_cipher(cipher_name):
                   "\n"
     }
 
-    # Logic for updating cipher_text1 with the current cipher's information
-    cipher_info_text1.config(state=tk.NORMAL)  # Temporarily enable editing to update text
-    cipher_info_text1.delete("1.0", tk.END)  # Clear existing text
+    # Update text box with current cipher's information
+    cipher_info_text1.config(state=tk.NORMAL)
+    cipher_info_text1.delete("1.0", tk.END)
     cipher_info_text1.insert(tk.END, f"Current Cipher: {cipher_name}\n\n")
     cipher_info_text1.insert(tk.END, cipher_descriptions[cipher_name])
-    cipher_info_text1.config(state=tk.DISABLED)  # Disable editing
+    cipher_info_text1.config(state=tk.DISABLED)
 
-    # Logic for showing/hiding Vigenere max key length entry
+    # Handle UI components based on selected cipher
     if cipher_name == "Vigenere":
-        generate_hill_button.pack_forget()
-        matrix_size_entry.pack_forget()
-        matrix_size_label.pack_forget()
-        known_plaintext_label.pack_forget()
-        known_plaintext_entry.pack_forget()
-
         max_key_length_label.pack(anchor=tk.W)
         max_key_length_entry.pack(padx=5, pady=5, fill=tk.X)
         key_length_guesses_label.pack(anchor=tk.W)
         key_length_guesses_entry.pack(padx=5, pady=5, fill=tk.X)
         shift_guesses_label.pack(anchor=tk.W)
         shift_guesses_entry.pack(padx=5, pady=5, fill=tk.X)
+
+        matrix_size_label.pack_forget()
+        matrix_size_entry.pack_forget()
+        generate_hill_button.pack_forget()
+        known_plaintext_label.pack_forget()
+        known_plaintext_entry.pack_forget()
+        start_index_label.pack_forget()
+        start_index_entry.pack_forget()
     elif cipher_name == "Hill":
-        # Show widgets for Hill cipher
+        matrix_size_label.pack(anchor=tk.W)
+        matrix_size_entry.pack(padx=5, pady=(0, 5), fill=tk.X)
+        generate_hill_button.pack(padx=5, pady=(5, 5), fill=tk.X)
+        known_plaintext_label.pack(anchor=tk.W)
+        known_plaintext_entry.pack(padx=5, pady=(0, 5), fill=tk.BOTH, expand=True)
+        start_index_label.pack(anchor=tk.W)
+        start_index_entry.pack(padx=5, pady=(0, 5), fill=tk.X)
+
         max_key_length_label.pack_forget()
         max_key_length_entry.pack_forget()
         key_length_guesses_label.pack_forget()
         key_length_guesses_entry.pack_forget()
         shift_guesses_label.pack_forget()
         shift_guesses_entry.pack_forget()
-
-        matrix_size_label.pack(anchor=tk.W, pady=(5, 0))
-        matrix_size_entry.pack(padx=5, pady=(0, 5), fill=tk.X)
-        generate_hill_button.pack(padx=5, pady=(5, 5), fill=tk.X)
-        known_plaintext_label.pack(anchor=tk.W, pady=(5, 0))
-        known_plaintext_entry.pack(padx=5, pady=(0, 5), fill=tk.BOTH, expand=True)
     else:
         max_key_length_label.pack_forget()
         max_key_length_entry.pack_forget()
@@ -457,26 +477,27 @@ def select_cipher(cipher_name):
         key_length_guesses_entry.pack_forget()
         shift_guesses_label.pack_forget()
         shift_guesses_entry.pack_forget()
-        generate_hill_button.pack_forget()
-        matrix_size_entry.pack_forget()
         matrix_size_label.pack_forget()
+        matrix_size_entry.pack_forget()
+        generate_hill_button.pack_forget()
         known_plaintext_label.pack_forget()
         known_plaintext_entry.pack_forget()
+        start_index_label.pack_forget()
+        start_index_entry.pack_forget()
 
-    # Define a color for the pressed button
+    # Update button appearance
     pressed_button_color = '#0a4f67'
-
-    # Update button styles for all buttons, showing the selected one as 'pressed'
     for cipher, btn in cipher_buttons.items():
         if cipher == cipher_name:
-            btn.config(relief=tk.SUNKEN, bg=pressed_button_color)  # Selected button looks 'pressed' with a unique color
+            btn.config(relief=tk.SUNKEN, bg=pressed_button_color)
         else:
-            btn.config(relief=tk.RAISED, bg=button_color)  # Other buttons revert to their original color
+            btn.config(relief=tk.RAISED, bg=button_color)
 
     update_key_format_example()
 
 
-select_cipher("Caesar")  # Example: Select 'Caesar' cipher by default
+# Example: Select 'Caesar' cipher by default at the beginning of the script
+select_cipher("Caesar")
 
 # With this:
 if __name__ == "__main__":

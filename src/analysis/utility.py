@@ -16,16 +16,20 @@ def matrix_effectively_equal(matrix_a, matrix_b, modulus=26):
 
 
 def validate_and_convert_hill_key(key):
-    # Check if the key is already a NumPy array
-    if isinstance(key, np.ndarray):
-        key_matrix = key
-    # If the key is a string, convert it to a NumPy array
-    elif isinstance(key, str):
+    import numpy as np
+    import re
+    from math import gcd
+
+    # Normalize input by removing brackets and commas, and splitting
+    if isinstance(key, str):
+        key = re.sub(r'[^\d\s]', '', key)  # Remove non-digit and non-space characters
         key_list = [int(k) for k in key.split()]
         n = int(np.sqrt(len(key_list)))
         if n ** 2 != len(key_list):
             return False, None
         key_matrix = np.array(key_list).reshape(n, n)
+    elif isinstance(key, np.ndarray):
+        key_matrix = key
     else:
         return False, None
 

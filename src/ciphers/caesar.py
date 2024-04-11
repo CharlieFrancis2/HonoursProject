@@ -2,6 +2,7 @@ import tkinter as tk
 from analysis import utility as util
 from tabulate import tabulate
 
+
 # Define a default no-op callback function for non-GUI usage
 
 # --------------------------------------------------------------------------------
@@ -71,7 +72,6 @@ def decode(cipher_text, key, update_terminal_callback):
             new_char = char
             data.append([char, "-", char])
         plaintext += new_char
-
 
     # Display process in the terminal callback
     table_str = tabulate(data, headers=["Char", "Shift", "Result"], tablefmt="plain") if data else ""
