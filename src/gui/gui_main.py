@@ -157,8 +157,6 @@ def update_key_format_example():
         key_format_label.config(text="Example: KEYWORD (Alphabetic)")
     elif cipher == 'Hill':
         key_format_label.config(text="Example: 5 17 4 15 (Matrix format)")
-    elif cipher == 'Enigma':  # Assuming 'Enigma' is part of ciphers for demonstration
-        key_format_label.config(text="Example: Enigma settings")
     else:
         key_format_label.config(text="Select a cipher")
 
@@ -214,6 +212,9 @@ entry_style2 = {
 text_style = {
     'font': font_style, 'bg': text_widget_bg, 'fg': foreground_color
 }
+text_style2 = {
+    'font': font_style, 'bg': background_color, 'fg': foreground_color
+}
 
 # Main frame configuration
 mainframe = tk.Frame(root, bg=background_color)
@@ -238,7 +239,7 @@ cipher_info_frame = tk.Frame(mainframe, bg=background_color)
 cipher_info_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=10)
 
 # Cipher buttons configuration
-ciphers = ["Caesar", "Vigenere", "Hill", "Enigma"]
+ciphers = ["Caesar", "Vigenere", "Hill"]
 cipher_buttons = {}
 for cipher in ciphers:
     btn = tk.Button(cipher_buttons_frame, text=cipher, command=lambda c=cipher: select_cipher(c), **label_style)
@@ -334,7 +335,7 @@ def hill_key_generated(n):
 
 
 # Cipher information display area with initial info and status updates
-cipher_info_text1 = tk.Text(cipher_info_frame, height=5, width=50, bd=0, highlightthickness=0, **text_style)
+cipher_info_text1 = tk.Text(cipher_info_frame, height=5, width=50, bd=0, highlightthickness=0, **text_style2)
 cipher_info_text1.pack(side=tk.TOP, padx=5, pady=5, fill=tk.BOTH, expand=True)
 cipher_info_text1.insert(tk.END, "Current Cipher: Caesar")
 cipher_info_text1.config(state=tk.DISABLED)
@@ -394,7 +395,13 @@ def select_cipher(cipher_name):
                   "\n"
                   "The Caesar cipher is easily cracked due to its simplicity, but it lays the foundational concept "
                   "for more complex ciphers."
-                  " Example:\nPlain: A B C D E \nCipher(+3): D E F G H\n",
+                  " Example:\nPlain: A B C D E \nCipher(+3): D E F G H\n"
+                  "\n"
+                  "Cryptanalysis Method:\n"
+                  "The provided code uses a Chi-Square test to determine the most likely shift key. It decodes the "
+                  "ciphertext with all possible shifts (0-25), and then calculates the Chi-Square statistic by comparing "
+                  "the letter frequency of the decoded text to the expected frequency in the English language. The shift "
+                  "with the lowest Chi-Square value is considered the most likely key.",
 
         "Vigenere": "The Vigenère cipher is an advancement in the art of war-time communication, representing a "
                     "significant step forward from the Caesar cipher by introducing a form of polyalphabetic "
@@ -406,7 +413,14 @@ def select_cipher(cipher_name):
                     "shifted by the alphabet position of 'K', 'B' by 'E', and so on. This method creates a more "
                     "secure encryption, as it produces multiple ciphertext alphabets, making the Vigenère cipher much "
                     "harder to break without knowledge of the key."
-                    " Example (Key: KEY):\nKey Repeated: K E Y K E \nPlain Text: H E L L O \nCipher Text: R I J M K\n",
+                    " Example (Key: KEY):\nKey Repeated: K E Y K E \nPlain Text: H E L L O \nCipher Text: R I J M K\n"
+                    "\n"
+                    "Cryptanalysis Method:\n"
+                    "The script uses statistical analysis by employing a Kasiski Examination and a frequency analysis "
+                    "method to guess the length of the key and then deduces the possible keys. By aligning the most "
+                    "frequent letters in segments of the ciphertext (divided by the guessed key length) with the most "
+                    "frequent letters in English, it creates potential key segments and combines them to form the most "
+                    "probable keys.",
 
         "Hill": "The Hill cipher, developed by Lester S. Hill in 1929, marks a departure from traditional "
                 "substitution ciphers by employing mathematical concepts from linear algebra."
@@ -417,21 +431,17 @@ def select_cipher(cipher_name):
                 "key is a square matrix that must be invertible under modular arithmetic to ensure that decryption is "
                 "possible. This method allows for the encryption of multiple letters at once, significantly "
                 "increasing the cipher's strength against cryptanalysis."
+                "\n"
+                "\n"
+                "Cryptanalysis Method:\n"
+                "The code breaks the Hill cipher by using a known plaintext attack. It first identifies possible matrices "
+                "that transform the known plaintext into the corresponding ciphertext through matrix operations. The "
+                "procedure involves setting up equations based on the matrix multiplication rule and solving them to find "
+                "the matrix coefficients. The coefficients that solve the equations correctly are potential keys, which "
+                "are tested to ensure they can indeed decrypt the ciphertext to the known plaintext."
                 "\n",
-
-        "Enigma": "The Enigma machine, a pinnacle of cryptographic achievement used by Germany during World War II, "
-                  "utilizes a complex system of rotors and a plugboard to achieve an exceptionally high level of "
-                  "encryption."
-                  "\n"
-                  "\n"
-                  "Each press of a letter key advances a rotor, changing the electrical pathway and thus the "
-                  "encryption with every keystroke, which means the same plaintext letter can result in different "
-                  "ciphertext letters throughout a message. This, combined with the plugboard's capability to swap "
-                  "letters before and after they pass through the rotors, added layers of security. Cracking the "
-                  "Enigma cipher, achieved by the Allies, stands as one of the most significant cryptographic feats "
-                  "of the era."
-                  "\n"
     }
+
 
     # Update text box with current cipher's information
     cipher_info_text1.config(state=tk.NORMAL)

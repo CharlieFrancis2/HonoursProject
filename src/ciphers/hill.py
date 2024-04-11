@@ -183,6 +183,7 @@ def perform_cryptanalysis(known_plaintext, ciphertext, blocksize, output_callbac
             matrix_hash = tuple(map(tuple, K_matrix))
             if matrix_hash not in seen_hashes:
                 seen_hashes.add(matrix_hash)
+                K_matrix = K_matrix.transpose()
                 valid_keys.append(K_matrix.tolist())
                 terminal_callback(f"Unique key matrix found and added: {K_matrix.tolist()}")
 

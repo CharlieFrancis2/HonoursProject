@@ -89,7 +89,7 @@ def decode(cipher_text, key, update_terminal_callback):
 # --------------------------------------------------------------------------------
 # CHI-SQUARE CRYPTANALYSIS FUNCTION
 # --------------------------------------------------------------------------------
-def chi_cryptanalysis(text, exp_letter, exp_bi, exp_tri, output_text, update_terminal_callback):
+def chi_cryptanalysis(text, exp_letter, exp_bi, exp_tri, update_terminal, output_text, update_status):
     """
     Perform a Chi-Square Cryptanalysis on the given text using Caesar cipher.
 
@@ -123,5 +123,4 @@ def chi_cryptanalysis(text, exp_letter, exp_bi, exp_tri, output_text, update_ter
         key, chi_letter, chi_bi, chi_tri, decoded_text = results[i]
         output_str += f"\nKey: {key}\nDecoded Text Preview: {decoded_text[:100]}...\n"
 
-    output_text.delete("1.0", tk.END)  # Clear existing text
-    output_text.insert(tk.END, output_str)  # Insert new output string
+    return output_str
