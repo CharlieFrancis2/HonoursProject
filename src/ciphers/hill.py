@@ -195,7 +195,15 @@ def perform_cryptanalysis(known_plaintext, ciphertext, blocksize, output_callbac
 
 
 def cryptanalyse(known_text, cipher_text, key_size, start_index, output_callback, terminal_callback):
+
+    terminal_callback("Starting cryptanalysis...")
+    terminal_callback(f"Known text (first 100 chars): {known_text[:100]}")  # Print first 100 chars of known_text
+    terminal_callback(f"Cipher text (first 100 chars): {cipher_text[:100]}")  # Print first 100 chars of cipher_segment
+    terminal_callback(f"Key size: {key_size}")
+    terminal_callback(f"Start index: {start_index}")
+
     """Main function to handle the setup and execution of cryptanalysis."""
+    output_str = "Results:\n"
     if len(known_text) < key_size ** 2:
         terminal_callback("Insufficient known plaintext length for analysis.")
         return
@@ -214,10 +222,12 @@ def cryptanalyse(known_text, cipher_text, key_size, start_index, output_callback
         for key_matrix in valid_keys:
             key_string = matrix_to_string(np.array(key_matrix))
             if util.validate_and_convert_hill_key(key_matrix):
-                output_callback(f"Found matching key: {key_string}")
+                output_str += f"Found matching key: {key_string}"
             else:
-                output_callback("Failed validation functiom")
+                output_str += "Failed validation functiom"
     else:
-        output_callback("No valid keys found.")
+        output_str += "No valid keys found."
+
+    return output_str
 
 

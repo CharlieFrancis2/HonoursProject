@@ -35,8 +35,8 @@ def start_operation_in_thread(operation, callback, *args):
     """
     Starts the specified operation in a separate thread and uses a callback function to handle the result.
     """
-
     def operation_wrapper():
+        print("Debug: Operation arguments at thread start", args)
         try:
             result = operation(*args)
             root.after(0, callback, result)
@@ -50,14 +50,11 @@ def start_operation_in_thread(operation, callback, *args):
 
 
 def update_output_text(result):
-    """
-    Callback function to update the GUI with the result of an operation.
-    Properly formats the result based on its type to display in the GUI.
-    """
+    print("Debug - Result received:", result)  # Debug statement to see what's being received
     if result is None:
         result_str = "No results to display."
     elif isinstance(result, list):
-        # Assuming the list might contain list of lists (matrix) or other elements
+        # Assuming the list might contain lists (matrices) or other elements
         result_str = "\n".join(' '.join(map(str, row)) if isinstance(row, list) else str(row) for row in result)
     else:
         result_str = str(result)
@@ -69,8 +66,19 @@ def update_output_text(result):
 def perform_operation():
     text = input_text.get("1.0", "end-1c").strip()  # Get the plaintext/ciphertext from input
     key_str = key_entry.get()  # Get the key as a string from input
-    matrix_size = matrix_size_entry.get()  # Get the matrix size for Hill cipher
-    known = known_plaintext_entry.get("1.0", "end-1c").strip()  # Get the known plaintext for cryptanalysis
+    known = known_plaintext_entry.get("1.0", "end-1c").strip()  # Get the full plaintext input
+    known  = util.prepare_text(known)
+    try:
+        start_index = int(start_index_entry.get())
+        matrix_size = int(matrix_size_entry.get())
+    except ValueError:
+        output_text.insert("1.0", "Invalid start index or matrix size: must be integers")
+        return
+
+    trimmed_known_text = extract_known(known, start_index, matrix_size)
+    if not trimmed_known_text:
+        output_text.insert("1.0", "Insufficient known plaintext for analysis.")
+        return
 
     cipher = cipher_choice.get()  # Get selected cipher type
     operation = operation_var.get()  # Get selected operation type
@@ -120,15 +128,8 @@ def perform_operation():
                 additional_args = (int(max_key_length_entry.get()), int(key_length_guesses_entry.get()), int(shift_guesses_entry.get()))
             start_operation_in_thread(operations[cipher][2], update_output_text, text, *additional_args, update_terminal)
         elif cipher == 'Hill':
-            try:
-                start_index = int(start_index_entry.get())
-                matrix_size = int(matrix_size)
-                known = known_plaintext_entry.get("1.0", "end-1c").strip()  # Get the known plaintext for cryptanalysis
-                known = extract_known(known, start_index, 300, int(matrix_size))
-            except ValueError:
-                output_text.insert("1.0", "Invalid start index or matrix size: must be integers")
-                return
-            start_operation_in_thread(operations[cipher][2], update_output_text, known, text, matrix_size, start_index, update_output, update_terminal)
+            start_operation_in_thread(operations['Hill'][2], update_output_text, trimmed_known_text, text, matrix_size,
+                                      start_index, update_output_text, update_terminal)
         else:
             output_text.insert("1.0", "Cryptanalysis not supported for this cipher.")
 

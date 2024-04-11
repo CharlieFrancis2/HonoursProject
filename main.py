@@ -1,7 +1,4 @@
 import ciphers.hill as hill
-import analysis.utility as util
-import numpy as np
-import ciphers.hill as hill
 
 
 class Terminal:
@@ -25,7 +22,8 @@ def main():
         return
 
     # Extract and trim the known plaintext
-    known_plaintext = hill.extract_and_trim(plaintext, start_index, key_size)
+    known_plaintext = hill.extract_and_trim(plaintext[:300], start_index, key_size)
+    print(known_plaintext)
     if not known_plaintext:
         Terminal.output("Failed to extract sufficient plaintext for encryption.")
         return
@@ -37,7 +35,7 @@ def main():
     Terminal.debug("Ciphertext generated.")
 
     # Perform cryptanalysis
-    hill.cryptanalyse(known_plaintext, ciphertext, key_size, start_index, Terminal.output, Terminal.debug)
+    print(hill.cryptanalyse(known_plaintext, ciphertext, key_size, start_index, Terminal.output, Terminal.debug))
 
 
 if __name__ == "__main__":
