@@ -25,15 +25,17 @@ def encode(plain_text, key, update_terminal_callback):
 
     # Data for the visualization table
     data = []
-    for i, char in enumerate(plain_text[:10]):  # Limit to first 10 characters
+    count  = 0
+    for i, char in enumerate(plain_text):  # Limit to first 10 characters
         if char.isalpha():
             shift_value = (ord(char) - ord('A') + key) % 26
             new_char = chr(shift_value + ord('A'))
-            data.append([char, f"+{key}", new_char])
+            if count < 10:
+                data.append([char, f"+{key}", new_char])
         else:
             new_char = char
-            data.append([char, "-", char])
         cipher_text += new_char
+        count += 1
 
     # Display process in the terminal callback
     table_str = tabulate(data, headers=["Char", "Shift", "Result"], tablefmt="plain") if data else ""
@@ -63,15 +65,17 @@ def decode(cipher_text, key, update_terminal_callback):
 
     # Data for the visualization table
     data = []
-    for i, char in enumerate(cipher_text[:10]):  # Limit to first 10 characters
+    count = 0
+    for i, char in enumerate(cipher_text):  # Limit to first 10 characters
         if char.isalpha():
             shift_value = (ord(char) - ord('A') - key) % 26
             new_char = chr(shift_value + ord('A'))
-            data.append([char, f"-{key}", new_char])
+            if count < 10:
+                data.append([char, f"-{key}", new_char])
         else:
             new_char = char
-            data.append([char, "-", char])
         plaintext += new_char
+        count += 1
 
     # Display process in the terminal callback
     table_str = tabulate(data, headers=["Char", "Shift", "Result"], tablefmt="plain") if data else ""
