@@ -335,7 +335,7 @@ def hill_key_generated(n):
 
 
 # Cipher information display area with initial info and status updates
-cipher_info_text1 = tk.Text(cipher_info_frame, height=5, width=50, bd=0, highlightthickness=0, **text_style2)
+cipher_info_text1 = tk.Text(cipher_info_frame, height=5, width=50, bd=0, highlightthickness=0, wrap=tk.WORD, **text_style2)
 cipher_info_text1.pack(side=tk.TOP, padx=5, pady=5, fill=tk.BOTH, expand=True)
 cipher_info_text1.insert(tk.END, "Current Cipher: Caesar")
 cipher_info_text1.config(state=tk.DISABLED)
