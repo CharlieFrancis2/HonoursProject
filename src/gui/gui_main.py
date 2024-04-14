@@ -1,6 +1,6 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox
 import threading
+import tkinter as tk
+from tkinter import filedialog
 
 # Import cipher functions and analysis utilities
 import analysis.utility as util
@@ -10,15 +10,6 @@ from ciphers.caesar import encode as encode_caesar, decode as decode_caesar, chi
 from ciphers.hill import (encode as encode_hill, decode as decode_hill, cryptanalyse as cryptanalyse_hill, \
                           generate_key as generate_hill, extract_and_trim as extract_known)
 from ciphers.vigenere import encode as encode_vigenere, decode as decode_vigenere, cryptanalyse as cryptanalyse_vigenere
-
-
-# TODO:
-#   Implement Vigenere AutoKey
-#   Fix Hill Cryptanalysis
-#   Implement Enigma encoding/decoding
-#   Fix Text Wrapping on descriptions
-#   Fix button hover consistency
-#   Final Polish on Spacings ect.
 
 
 def upload_file():
@@ -35,8 +26,8 @@ def start_operation_in_thread(operation, callback, *args):
     """
     Starts the specified operation in a separate thread and uses a callback function to handle the result.
     """
+
     def operation_wrapper():
-        print("Debug: Operation arguments at thread start", args)
         try:
             result = operation(*args)
             root.after(0, callback, result)
@@ -50,7 +41,6 @@ def start_operation_in_thread(operation, callback, *args):
 
 
 def update_output_text(result):
-    print("Debug - Result received:", result)  # Debug statement to see what's being received
     if result is None:
         result_str = "No results to display."
     elif isinstance(result, list):
@@ -64,64 +54,84 @@ def update_output_text(result):
 
 
 def perform_operation():
-    text = input_text.get("1.0", "end-1c").strip()  # Get the plaintext/ciphertext from input
-    key_str = key_entry.get()  # Get the key as a string from input
+    # Retrieve the user-inputted text from the GUI text field. Validate to ensure it is not empty.
+    text = input_text.get("1.0", "end-1c").strip()
+    if not text:
+        output_text.insert("1.0", "Error: Input text cannot be empty. Please provide some text to proceed.")
+        return
 
-    cipher = cipher_choice.get()  # Get selected cipher type
-    operation = operation_var.get()  # Get selected operation type
-    output_text.delete("1.0", "end")  # Clear output text area before new output
+    # Retrieve the key from the GUI input field
+    key_str = key_entry.get()
+    # Retrieve the currently selected cipher and operation from the GUI
+    cipher = cipher_choice.get()
+    operation = operation_var.get()
 
-    # Validate key and perform the selected operation
+    # Clear the output text area to prepare for new output
+    output_text.delete("1.0", "end")
+
+    # Perform input validation for the key based on the selected cipher
     if operation != 'Cryptanalyse':
         if cipher == 'Caesar':
             try:
-                key = int(key_str)
+                key = int(key_str)  # The key for Caesar cipher must be an integer
             except ValueError:
                 output_text.insert("1.0", "Invalid key for Caesar cipher: must be an integer")
                 return
         elif cipher == 'Vigenere':
-            if not key_str.isalpha():
+            if not key_str.isalpha():  # The key for Vigenere cipher must only contain alphabetic characters
                 output_text.insert("1.0", "Invalid key for Vigenere cipher: must contain only letters")
                 return
             key = key_str
         elif cipher == 'Hill':
+            # Validate the matrix key format for Hill cipher
             valid, key_matrix = util.validate_and_convert_hill_key(key_str)
             if not valid:
                 output_text.insert("1.0", "Invalid key for Hill cipher: must be a valid matrix format")
                 return
             key = key_matrix
         else:
-            output_text.insert("1.0", "Cipher not supported.")
+            output_text.insert("1.0", "Cipher not supported.")  # Inform user if the selected cipher is not supported
             return
 
-    # Define operations mapping for each cipher type
+    # Mapping of cipher types to their corresponding encoding, decoding, and cryptanalysis functions
     operations = {
         'Caesar': (encode_caesar, decode_caesar, cryptanalyse_caesar),
         'Vigenere': (encode_vigenere, decode_vigenere, cryptanalyse_vigenere),
         'Hill': (encode_hill, decode_hill, cryptanalyse_hill),
     }
 
+    # Execute the selected operation in a separate thread to keep UI responsive
     if operation == 'Encode':
         start_operation_in_thread(operations[cipher][0], update_output_text, text, key, update_terminal)
     elif operation == 'Decode':
         start_operation_in_thread(operations[cipher][1], update_output_text, text, key, update_terminal)
     elif operation == 'Cryptanalyse':
         if cipher in ('Caesar', 'Vigenere'):
-            # Assuming specific args are needed as earlier
-            additional_args = ()
-            if cipher == 'Caesar':
-                additional_args = (exp_letter, exp_bi, exp_tri)
-            elif cipher == 'Vigenere':
-                additional_args = (int(max_key_length_entry.get()), int(key_length_guesses_entry.get()), int(shift_guesses_entry.get()))
-            start_operation_in_thread(operations[cipher][2], update_output_text, text, *additional_args, update_terminal, update_output_text, update_status_callback)
+            # Validate and retrieve additional inputs for Vigenere cipher cryptanalysis
+            try:
+                max_key_length = int(max_key_length_entry.get().strip())
+                key_length_guesses = int(key_length_guesses_entry.get().strip())
+                shift_guesses = int(shift_guesses_entry.get().strip())
+                if max_key_length <= 0 or key_length_guesses <= 0 or shift_guesses <= 0:
+                    output_text.insert("1.0", "Error: Key length and shift guesses must be positive integers.")
+                    return
+            except ValueError:
+                output_text.insert("1.0", "Invalid input: Max key length, key length guesses, and shift guesses must be integers.")
+                return
+            additional_args = (max_key_length, key_length_guesses, shift_guesses)
+            start_operation_in_thread(operations[cipher][2], update_output_text, text, *additional_args,
+                                      update_terminal, update_output_text, update_status_callback)
         elif cipher == 'Hill':
-            known = known_plaintext_entry.get("1.0", "end-1c").strip()  # Get the full plaintext input
+            known = known_plaintext_entry.get("1.0", "end-1c").strip()  # Get the known plaintext for Hill cryptanalysis
             known = util.prepare_text(known)
             try:
-                start_index = int(start_index_entry.get())
-                matrix_size = int(matrix_size_entry.get())
+                start_index = int(start_index_entry.get().strip())
+                matrix_size = int(matrix_size_entry.get().strip())
+                if start_index < 0 or matrix_size <= 0:
+                    output_text.insert("1.0", "Error: Start index must be non-negative and matrix size must be positive.")
+                    return
             except ValueError:
-                output_text.insert("1.0", "Invalid start index or matrix size: must be integers")
+                output_text.insert("1.0", "Invalid input: Start index and matrix size must be integers.")
                 return
 
             trimmed_known_text = extract_known(known, start_index, matrix_size)
@@ -132,6 +142,7 @@ def perform_operation():
                                       start_index, update_output_text, update_terminal)
         else:
             output_text.insert("1.0", "Cryptanalysis not supported for this cipher.")
+
 
 
 
@@ -292,7 +303,7 @@ shift_guesses_entry.pack_forget()  # Initially hide
 
 # Hill cipher key generation button - initially hidden
 generate_hill_button = tk.Button(options_frame, text="Generate Hill Key",
-                                 command=lambda: hill_key_generated(int(matrix_size_entry.get())), **button_style)
+                                 command=lambda: hill_key_generated(matrix_size_entry.get()), **button_style)
 generate_hill_button.pack(padx=5, pady=(5, 5), fill=tk.X)
 generate_hill_button.pack_forget()  # Initially hide this button
 
@@ -327,15 +338,39 @@ start_index = 0
 def hill_key_generated(n):
     """
     Generates a Hill cipher key for the specified matrix size and displays it.
+
+    Args:
+    - n (str): The size of the matrix, which should be a positive integer.
     """
-    generated_key = generate_hill(n)
-    # Assuming `key_entry` is your tkinter Entry widget for displaying the generated key
-    key_entry.delete(0, tk.END)  # Clear current entry
-    key_entry.insert(0, generated_key)  # Display the formatted key
+    try:
+        matrix_size = int(n)  # Attempt to convert the matrix size to an integer
+        if matrix_size <= 0:
+            # If the matrix size is zero or negative, display an error message
+            update_output_text("Error: Key size must be a positive integer.")
+            return
+    except ValueError:
+        # If conversion fails, it means the input was not an integer
+        update_output_text("Error: Key size must be an integer.")
+        return
+
+    # If matrix_size is valid, proceed to generate the key
+    try:
+        key_matrix = generate_hill(matrix_size)
+        if key_matrix is None:
+            # If no matrix is returned, it indicates failure in generating an invertible matrix
+            update_output_text("Failed to generate an invertible matrix. Please try a different size.")
+            return
+
+        key_entry.delete(0, tk.END)  # Clear the existing entry
+        key_entry.insert(0, key_matrix)  # Display the generated key
+    except Exception as e:
+        # Handle any other exceptions that may occur
+        update_output_text(f"An error occurred during key generation: {str(e)}")
 
 
 # Cipher information display area with initial info and status updates
-cipher_info_text1 = tk.Text(cipher_info_frame, height=5, width=50, bd=0, highlightthickness=0, wrap=tk.WORD, **text_style2)
+cipher_info_text1 = tk.Text(cipher_info_frame, height=5, width=50, bd=0, highlightthickness=0, wrap=tk.WORD,
+                            **text_style2)
 cipher_info_text1.pack(side=tk.TOP, padx=5, pady=5, fill=tk.BOTH, expand=True)
 cipher_info_text1.insert(tk.END, "Current Cipher: Caesar")
 cipher_info_text1.config(state=tk.DISABLED)
@@ -398,7 +433,7 @@ def select_cipher(cipher_name):
                   " Example:\nPlain: A B C D E \nCipher(+3): D E F G H\n"
                   "\n"
                   "Cryptanalysis Method:\n"
-                  "The provided code uses a Chi-Square test to determine the most likely shift key. It decodes the "
+                  "The program uses a Chi-Square test to determine the most likely shift key. It decodes the "
                   "ciphertext with all possible shifts (0-25), and then calculates the Chi-Square statistic by comparing "
                   "the letter frequency of the decoded text to the expected frequency in the English language. The shift "
                   "with the lowest Chi-Square value is considered the most likely key.",
@@ -416,7 +451,7 @@ def select_cipher(cipher_name):
                     " Example (Key: KEY):\nKey Repeated: K E Y K E \nPlain Text: H E L L O \nCipher Text: R I J M K\n"
                     "\n"
                     "Cryptanalysis Method:\n"
-                    "The script uses statistical analysis by employing a Kasiski Examination and a frequency analysis "
+                    "The program uses statistical analysis by employing a Kasiski Examination and a frequency analysis "
                     "method to guess the length of the key and then deduces the possible keys. By aligning the most "
                     "frequent letters in segments of the ciphertext (divided by the guessed key length) with the most "
                     "frequent letters in English, it creates potential key segments and combines them to form the most "
@@ -434,14 +469,13 @@ def select_cipher(cipher_name):
                 "\n"
                 "\n"
                 "Cryptanalysis Method:\n"
-                "The code breaks the Hill cipher by using a known plaintext attack. It first identifies possible matrices "
+                "The program breaks the Hill cipher by using a known plaintext attack. It first identifies possible matrices "
                 "that transform the known plaintext into the corresponding ciphertext through matrix operations. The "
                 "procedure involves setting up equations based on the matrix multiplication rule and solving them to find "
                 "the matrix coefficients. The coefficients that solve the equations correctly are potential keys, which "
                 "are tested to ensure they can indeed decrypt the ciphertext to the known plaintext."
                 "\n",
     }
-
 
     # Update text box with current cipher's information
     cipher_info_text1.config(state=tk.NORMAL)

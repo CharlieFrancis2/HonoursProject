@@ -1,7 +1,6 @@
+import itertools
 import tkinter as tk
-
 from tabulate import tabulate
-
 from functools import reduce
 import operator
 
@@ -19,29 +18,34 @@ from ciphers.caesar import decode as c_decode
 # --------------------------------------------------------------------------------
 def encode(plain_text, key, update_terminal_callback):
     """
-    Encode a plaintext using a Vigenère cipher.
+    Encode plaintext using a Vigenère cipher.
+    This involves repeating the key to match the length of the plaintext,
+    and shifting each letter of the plaintext by the corresponding letter in the key.
 
     Args:
-    - plain_text (str): The text to be encoded.
-    - key (str): The cipher key.
-    - update_terminal_callback (function): Callback function for UI updates.
+        plain_text (str): The text to be encoded.
+        key (str): The cipher key.
+        update_terminal_callback (function): Callback function for UI updates.
 
     Returns:
-    - str: The encoded ciphertext.
+        str: The encoded ciphertext.
     """
+    # Prepare the plaintext by removing non-alphabetic characters and converting to uppercase
     plain_text = util.prepare_text(plain_text)
-
-    key_index = 0
-    cipher_text = ''
+    cipher_text = ''  # Initialize the output variable for the encoded text
+    key_index = 0  # Initialize key index to cycle through each character of the key
 
     for char in plain_text:
-        if char.isalpha():
+        if char.isalpha():  # Process only alphabetic characters
+            # Calculate the shift amount from the current character in the key
             shift = ord(key[key_index].upper()) - ord('A')
+            # Shift the plaintext character within the bounds of uppercase English letters
             new_char = chr((ord(char) - ord('A') + shift) % 26 + ord('A'))
-            cipher_text += new_char
-            key_index = (key_index + 1) % len(key)
+            cipher_text += new_char  # Append the shifted character to the output ciphertext
+            key_index = (key_index + 1) % len(
+                key)  # Move to the next character in the key, wrapping around if necessary
 
-    return cipher_text
+    return cipher_text  # Return the fully encoded text
 
 
 # --------------------------------------------------------------------------------
@@ -49,222 +53,217 @@ def encode(plain_text, key, update_terminal_callback):
 # --------------------------------------------------------------------------------
 def decode(cipher_text, key, update_terminal_callback):
     """
-    Decode a ciphertext using a Vigenère cipher.
+    Decode ciphertext using a Vigenère cipher.
+    This reverses the encoding process by using the negative shift associated with each letter of the key.
 
     Args:
-    - cipher_text (str): The text to be decoded.
-    - key (str): The cipher key.
-    - update_terminal_callback (function): Callback function for UI updates.
+        cipher_text (str): The text to be decoded.
+        key (str): The cipher key.
+        update_terminal_callback (function): Callback function for UI updates.
 
     Returns:
-    - str: The decoded plaintext.
+        str: The decoded plaintext.
     """
+    # Prepare the ciphertext for decoding
     cipher_text = util.prepare_text(cipher_text)
-
-    key_index = 0
-    plaintext = ""
+    plaintext = ''  # Initialize the output variable for the decoded text
+    key_index = 0  # Initialize key index to cycle through each character of the key
 
     for char in cipher_text:
-        if char.isalpha():
+        if char.isalpha():  # Process only alphabetic characters
+            # Calculate the negative shift amount from the current character in the key
             shift = ord(key[key_index].upper()) - ord('A')
+            # Reverse the shift applied during encryption
             new_char = chr((ord(char) - ord('A') - shift) % 26 + ord('A'))
-            plaintext += new_char
-            key_index = (key_index + 1) % len(key)
+            plaintext += new_char  # Append the reversed character to the output plaintext
+            key_index = (key_index + 1) % len(
+                key)  # Move to the next character in the key, wrapping around if necessary
 
-    return plaintext
+    return plaintext  # Return the fully decoded text
 
 
 # --------------------------------------------------------------------------------
 # CRYPTANALYSIS FUNCTION
 # --------------------------------------------------------------------------------
-def cryptanalyse(cipher_text, max_key_length, key_guess, shift_guess, update_terminal_callback, output_text, update_status_callback):
+def cryptanalyse(cipher_text, max_key_length, key_guess, shift_guess, update_terminal_callback, output_text,
+                 update_status_callback):
     """
-    Perform cryptanalysis on a given ciphertext with a Vigenère cipher.
+    Perform cryptanalysis on a given ciphertext using a Vigenère cipher.
+    This involves estimating the key length and possible keys to attempt decrypting the ciphertext.
 
     Args:
-    - cipher_text (str): The ciphertext to analyze.
-    - max_key_length (int): Maximum length of the key to consider.
-    - update_terminal_callback (function): Callback function for terminal updates.
-    - output_text (tk.Text): The Text widget to display the analysis results.
-    - update_status_callback (function): Callback function for status updates.
+        cipher_text (str): The ciphertext to analyze.
+        max_key_length (int): Maximum length of the key to consider.
+        key_guess (int): Number of key length guesses to try.
+        shift_guess (int): Number of shift guesses per key length.
+        update_terminal_callback (function): Callback function for terminal updates.
+        output_text (tk.Text): The Text widget to display the analysis results.
+        update_status_callback (function): Callback function for status updates.
     """
-    KEY_LENGTHS_GUESSES = key_guess
-    SHIFT_LENGTH_GUESSES = shift_guess
+    # Prepare the ciphertext by normalizing it
     cipher_text = util.prepare_text(cipher_text)
 
+    # Function to calculate the Index of Coincidence (IC) for a column of text
     def calculate_ic(column_text):
-        """Calculate the Index of Coincidence (IC) for a column of text."""
-        freq = [0] * 26
+        freq = [0] * 26  # Frequency array for each letter A-Z
         for char in column_text:
             if char.isalpha():
                 freq[ord(char) - ord('A')] += 1
+        # Compute the IC using the formula IC = Σ(ni(ni-1)) / (N(N-1))
         IC_sum = sum(f * (f - 1) for f in freq)
         return IC_sum / (len(column_text) * (len(column_text) - 1)) if len(column_text) > 1 else 0
 
+    # Function to create a matrix of text columns based on the assumed key length
     def create_matrix(n, text):
-        """Segment the cipher text into columns based on a given key length."""
         return [text[i::n] for i in range(n)]
 
-    import itertools
-
+    # Function to generate all possible keys from the shift combinations found in cryptanalysis
     def generate_all_possible_keys(all_stream_shifts, all_possible_keys, update_terminal_callback,
                                    update_status_callback):
-        update_terminal_callback("Generating Keyset...")
+        update_terminal_callback("Generating a Keyset...")
         alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-        # Generate all combinations of shifts
         shift_combinations = [list(map(lambda x: x[0], stream_shifts)) for stream_shifts in all_stream_shifts]
         total_combinations = reduce(operator.mul, [len(shifts) for shifts in shift_combinations], 1)
-
         update_status_callback(f"Total Combinations: {total_combinations}")
 
-        count = 0
-        for combination in itertools.product(*shift_combinations):
+        for count, combination in enumerate(itertools.product(*shift_combinations)):
             key = ''.join(alphabet[shift] for shift in combination)
             all_possible_keys.append(key)
-            count += 1
-            if count % 1000 == 0:  # Update status for every 1000 keys generated
+            if count % 1000 == 0:
                 update_status_callback(f"Generated {count} of {total_combinations} keys")
+        update_terminal_callback("Done! Generated all possible keys for this key length.")
 
-        update_terminal_callback(f"Done! Generated {len(all_possible_keys)} keys!")
-
-    # Estimate Key Length
-    # TODO: PRBOLEM
-    # update_terminal_callback("Estimating Key Length...")
-    # data = [[i, 0] for i in range(1, max_key_length + 1)]
-    # for key_length in range(1, max_key_length + 1):
-    #     matrix = create_matrix(key_length, cipher_text)
-    #     ic_values = [calculate_ic(column) for column in matrix]
-    #     average_ic = sum(ic_values) / len(ic_values)
-    #     data[key_length - 1][1] = average_ic
-    #
-    # sorted_data = sorted(data, key=lambda row: abs(row[1] - 0.0686))[:KEY_LENGTHS_GUESSES]
-    # update_terminal_callback("Done! : " + str(sorted_data[0][0]))
+    # Estimate the most likely key lengths based on the Index of Coincidence
     update_terminal_callback("Estimating Key Length...")
     data = [[i, 0] for i in range(1, max_key_length + 1)]
     for key_length in range(1, max_key_length + 1):
         matrix = create_matrix(key_length, cipher_text)
         ic_values = [calculate_ic(column) for column in matrix]
-        if len(ic_values) == 0:
-            print(f"No IC values for key length {key_length}")
-            continue
-        average_ic = sum(ic_values) / len(ic_values)
+        average_ic = sum(ic_values) / len(ic_values) if ic_values else 0
         data[key_length - 1][1] = average_ic
-        print(f"Key Length: {key_length}, Average IC: {average_ic}")
 
-    sorted_data = sorted(data, key=lambda row: abs(row[1] - 0.0686))[:KEY_LENGTHS_GUESSES]
-    update_terminal_callback("Done! : " + str(sorted_data[0][0]))
-    print(sorted_data)
+    sorted_data = sorted(data, key=lambda row: abs(row[1] - 0.0686))[:key_guess]
+    update_terminal_callback("Key Length Estimation Complete")
+    table_str = tabulate(sorted_data, headers=["Key Length", "IC Value"], tablefmt="outline")
+    update_terminal_callback(table_str)
 
-    # Perform frequency analysis for each stream
+    # Analyze each key length guess to find possible shifts for each stream of characters
     all_possible_keys = []
     for key_length, _ in sorted_data:
         matrix = create_matrix(key_length, cipher_text)
         all_stream_shifts = []
-
         for stream_index, stream in enumerate(matrix):
             shift_scores = []
             for shift in range(26):
-                decrypted_stream = c_decode(stream, shift, update_terminal_callback)
+                decrypted_stream = c_decode(stream, shift, lambda x: None)  # Decode using each possible shift
                 letter_frequencies = util.generate_frequency_data(decrypted_stream)
                 chi_squared = util.compute_chi_squared(letter_frequencies[0], exp_letter, len(decrypted_stream))
                 shift_scores.append((shift, chi_squared))
-
-            top_shifts = sorted(shift_scores, key=lambda x: x[1])[:SHIFT_LENGTH_GUESSES]
+            top_shifts = sorted(shift_scores, key=lambda x: x[1])[:shift_guess]
             all_stream_shifts.append(top_shifts)
 
-        print(f"Top Shifts for Key Length {key_length}:", all_stream_shifts)
-        print("Generating keys for the following shifts:", all_stream_shifts)
         generate_all_possible_keys(all_stream_shifts, all_possible_keys, update_terminal_callback,
                                    update_status_callback)
-        print("Generated Keys:", all_possible_keys)
 
-    update_terminal_callback("Decoding with possible keys...")
+    update_terminal_callback(f"Generated {len(all_possible_keys)} keys!")
+
+    # Use the possible keys to attempt decrypting the ciphertext and analyze results
     results = vigenere_chi_cryptanalysis(cipher_text, all_possible_keys, exp_letter, exp_bi, exp_tri,
                                          update_status_callback)
 
-    # Now, finalize cryptanalysis by displaying results and tables for top keys
-    output_str = finalize_cryptanalysis(cipher_text, results, update_terminal_callback)
-
-    # Finally, update the GUI with the overall results
-    return output_str
+    # Display results and final decryption tables for top key guesses
+    return finalize_cryptanalysis(cipher_text, results, update_terminal_callback)
 
 
 def vigenere_chi_cryptanalysis(text, all_possible_keys, exp_letter, exp_bi, exp_tri, update_status_callback):
     """
-    Analyze the given text with all possible keys and calculate chi-squared scores.
+    Perform a detailed chi-squared analysis of the given text with all possible keys generated.
+    This method assesses how closely the decoded text for each key matches the expected frequency distributions.
 
     Args:
-    - text (str): The text to be analyzed.
-    - all_possible_keys (list): All possible keys generated from cryptanalysis.
-    - exp_letter (dict), exp_bi (dict), exp_tri (dict): Expected frequency distributions.
+        text (str): The ciphertext to be analyzed.
+        all_possible_keys (list): List of all possible decryption keys.
+        exp_letter (dict), exp_bi (dict), exp_tri (dict): Expected frequency distributions for letters, bigrams, and trigrams.
+        update_status_callback (function): Callback to update status in the UI.
 
     Returns:
-    - list: Sorted list of tuples with analysis results for each key.
+        list: A sorted list containing tuples of (key, chi-squared scores, decoded text) ranked by chi-squared values.
     """
     results = []
-    total_keys = len(all_possible_keys)
+    total_keys = len(all_possible_keys)  # Total number of keys to analyze
 
     for count, key in enumerate(all_possible_keys, start=1):
-        update_status_callback(f"Decoding: {count} out of: {total_keys}")
-        decoded_text = decode(text, key, update_status_callback)
+        update_status_callback(f"Decoding: {count} of {total_keys}")  # Update the UI with progress
+        decoded_text = decode(text, key,
+                              lambda x: None)  # Decode the text using the current key without updating the terminal
+        # Generate frequency data for the decoded text
         letter_freqs, bigram_freqs, trigram_freqs = util.generate_frequency_data(decoded_text)
 
+        # Calculate chi-squared values for letters, bigrams, and trigrams
         chi_letter = util.compute_chi_squared(letter_freqs, exp_letter, len(decoded_text))
         chi_bi = util.compute_chi_squared(bigram_freqs, exp_bi, len(decoded_text))
         chi_tri = util.compute_chi_squared(trigram_freqs, exp_tri, len(decoded_text))
 
+        # Store the results along with the key and decoded text
         results.append((key, chi_letter, chi_bi, chi_tri, decoded_text))
 
+    # Sort the results by the chi-squared score for trigrams, which generally gives a good measure of text structure
     results.sort(key=lambda x: x[3])
-    return results
+    return results  # Return the sorted results
 
 
 def display_vigenere_decryption_table(ciphertext, decrypted_text, key, update_terminal_callback):
     """
-    Display a table showing the decryption process for the first key length + 3 characters of the Vigenère cipher.
+    Display a detailed table showing the decryption process using a specific key, character by character.
 
     Args:
-    - ciphertext (str): The original encrypted text.
-    - decrypted_text (str): The decrypted text.
-    - key (str): The key used for decryption.
-    - update_terminal_callback (function): Callback function to display the message.
+        ciphertext (str): The original encrypted text.
+        decrypted_text (str): The decrypted text based on the chosen key.
+        key (str): The decryption key used.
+        update_terminal_callback (function): Callback to update the terminal with the decryption table.
+
+    This function displays a detailed side-by-side comparison of ciphertext characters, the shift used,
+    and the resulting plaintext characters.
     """
-    # Prepare the data for the table
+    # Prepare data for the table showing a few characters from the decryption process
     data = []
-    key_length = len(key)
-    display_length = min(len(decrypted_text), key_length + 3)
+    key_length = len(key)  # Length of the decryption key
+    display_length = min(len(decrypted_text), key_length + 3)  # Limit the display to key length plus a few characters
 
     for i in range(display_length):
-        encrypted_char = ciphertext[i]
-        decrypted_char = decrypted_text[i]
-        key_char = key[i % key_length]
-        shift = ord(key_char.upper()) - ord('A')  # Assuming uppercase key
+        encrypted_char = ciphertext[i]  # Encrypted character
+        decrypted_char = decrypted_text[i]  # Decrypted character
+        key_char = key[i % key_length]  # Current key character (cycled through the key)
+        shift = ord(key_char.upper()) - ord('A')  # Calculate shift used for this character
 
-        data.append([encrypted_char, f"-{shift}", decrypted_char])
+        data.append([encrypted_char, f"-{shift}", decrypted_char])  # Append the comparison to the data list
 
-    # Generate the table string
+    # Create a tabulated string of the data
     table_str = tabulate(data, headers=["Encrypted Char", "Shift", "Decrypted Char"], tablefmt="outline")
 
-    # Display the table
+    # Formulate the complete message to display
     display_message = f"Key: {key}\n{table_str}\n" + "+" * 50
-    update_terminal_callback(display_message)
+    update_terminal_callback(display_message)  # Update the terminal with the decryption table
 
 
 def finalize_cryptanalysis(ciphertext, results, update_terminal_callback):
     """
-    Display decryption tables for the top key guesses based on the results of cryptanalysis.
+    Finalize the cryptanalysis process by displaying the results for the best decryption keys.
 
     Args:
-    - ciphertext (str): The original encrypted text.
-    - results (list): The sorted list of tuples with analysis results for each key.
-    - update_terminal_callback (function): Callback function to display messages.
+        ciphertext (str): The original encrypted text.
+        results (list): Sorted list of analysis results, including keys and their respective chi-squared scores.
+        update_terminal_callback (function): Callback to display the final cryptanalysis results.
+
+    This function displays the top three decryption results based on the chi-squared analysis.
     """
     output_str = "Top 3 guesses based on Chi-Squared Letters Score:\n"
+    # Iterate over the top three results (or fewer if less available)
     for i in range(min(3, len(results))):
         key, chi_letter, chi_bi, chi_tri, decoded_text = results[i]
-        # The decryption table display should be based on each specific key found in results
-        key_length = len(key)  # Determine key length for display
-        display_vigenere_decryption_table(ciphertext, decoded_text[:key_length + 0], key, update_terminal_callback)
+        display_vigenere_decryption_table(ciphertext, decoded_text[:len(key) + 0], key,
+                                          update_terminal_callback)  # Display the decryption table for each key
+        # Append the results to the output string for display
         output_str += f"\nKey: {key}\nChi-Squared Score: {chi_letter}\nDecoded Text Preview: {decoded_text[:100]}...\n"
 
-    return output_str
+    return output_str  # Return the formatted output string with the top guesses

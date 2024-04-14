@@ -107,6 +107,7 @@ def prepare_text(text):
     text = text.upper()
     return text
 
+
 def add_padding(text, block_size):
     # Add padding if necessary
     padding_length = block_size - (len(text) % block_size)
@@ -294,4 +295,3 @@ def compute_chi_squared(observed, expected, text_length):
     # Normalize chi-squared by text length to account for text size variations.
     normalized_chi_squared = chi_squared / text_length
     return normalized_chi_squared
-
