@@ -106,7 +106,9 @@ def perform_operation():
     elif operation == 'Decode':
         start_operation_in_thread(operations[cipher][1], update_output_text, text, key, update_terminal)
     elif operation == 'Cryptanalyse':
-        if cipher in ('Caesar', 'Vigenere'):
+        if cipher == 'Caesar':
+            start_operation_in_thread(operations[cipher][2], update_output_text, text, exp_letter, exp_bi, exp_tri)
+        elif cipher == 'Vigenere':
             # Validate and retrieve additional inputs for Vigenere cipher cryptanalysis
             try:
                 max_key_length = int(max_key_length_entry.get().strip())
